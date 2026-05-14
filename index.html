@@ -1,631 +1,431 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { initializeApp } from 'firebase/app';
-import { 
-  getFirestore, 
-  collection, 
-  doc, 
-  setDoc, 
-  addDoc, 
-  onSnapshot, 
-  updateDoc, 
-  deleteDoc
-} from 'firebase/firestore';
-import { 
-  getAuth, 
-  signInAnonymously, 
-  onAuthStateChanged,
-  signInWithCustomToken 
-} from 'firebase/auth';
-import { 
-  ShoppingCart, 
-  ClipboardList, 
-  Plus, 
-  Package, 
-  CheckCircle, 
-  XCircle, 
-  Clock,
-  Settings,
-  ChevronRight, 
-  Search, 
-  Trash2, 
-  Warehouse, 
-  ArrowLeftRight, 
-  LayoutGrid, 
-  Bell, 
-  UserCheck, 
-  History, 
-  Copy, 
-  ExternalLink, 
-  CreditCard, 
-  FileText, 
-  Layers, 
-  Palette, 
-  Play, 
-  Square, 
-  Timer, 
-  MapPin,
-  UploadCloud,
-  AlertCircle,
-  Ruler,
-  PlusCircle,
-  AtSign,
-  UserSearch,
-  RefreshCw,
-  Image as ImageIcon,
-  Camera,
-  ChevronLeft,
-  ChevronRightSquare,
-  Wallet,
-  AlertTriangle,
-  ArrowLeft,
-  Send,
-  Scissors,
-  Lock,
-  Database
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>틱톡 라이브 셀러 마켓</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Firebase SDK (Compat Version) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
+        body { font-family: 'Pretendard', sans-serif; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
+        .active-tab { background-color: #111827; color: white; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .inactive-tab { background-color: white; color: #94a3b8; border: 1px solid #e2e8f0; }
+        .size-checked { background-color: #ec4899; border-color: #ec4899; color: white; box-shadow: 0 4px 6px -1px rgba(236, 72, 153, 0.3); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
 
-const firebaseConfig = typeof __firebase_config !== 'undefined' 
-  ? JSON.parse(__firebase_config) 
-  : {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
-  };
+    <div id="app" class="min-h-screen">
+        <!-- 로딩 화면 -->
+        <div id="loading-screen" class="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center">
+            <div class="relative">
+                <div class="w-16 h-16 border-4 border-pink-100 border-t-pink-500 rounded-full animate-spin"></div>
+                <i data-lucide="warehouse" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-pink-500 w-6 h-6"></i>
+            </div>
+            <p class="mt-6 font-black text-slate-400 animate-pulse">데이터 동기화 중...</p>
+        </div>
 
-const APP_ID = typeof __app_id !== 'undefined' ? __app_id : "tiktok-live-order-manager";
+        <!-- 알림 UI -->
+        <div id="notification-container" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[300] hidden transition-all duration-300">
+            <div class="flex items-center gap-3 px-8 py-4 rounded-[2rem] shadow-2xl border" id="notification-box">
+                <i data-lucide="bell" class="w-5 h-5"></i>
+                <span id="notification-msg" class="font-black text-sm"></span>
+            </div>
+        </div>
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+        <!-- 메인 콘텐츠 영역 -->
+        <div id="main-view"></div>
+    </div>
 
-const formatTime = (ms) => {
-  if (ms === null || ms < 0) return "00:00:00";
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-};
+    <script>
+        // [필독] Firebase 콘솔에서 발급받은 실제 정보를 아래에 입력하세요.
+        const firebaseConfig = {
+            apiKey: "본인의_API_KEY",
+            authDomain: "본인의_PROJECT_ID.firebaseapp.com",
+            projectId: "본인의_PROJECT_ID",
+            storageBucket: "본인의_PROJECT_ID.appspot.com",
+            messagingSenderId: "본인의_SENDER_ID",
+            appId: "본인의_APP_ID"
+        };
 
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [view, setView] = useState('customer'); 
-  const [isLoginStep, setIsLoginStep] = useState(false); // 관리자 비밀번호 확인 단계
-  const [adminPassword, setAdminPassword] = useState('');
-  const [customerTab, setCustomerTab] = useState('shop'); 
-  const [marketId, setMarketId] = useState('default-warehouse'); 
-  const [marketName, setMarketName] = useState('기본 창고');
-  const [registeredMarkets, setRegisteredMarkets] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [marketSettings, setMarketSettings] = useState({ 
-    bankName: '카카오뱅크', 
-    accountNum: '', 
-    accountHolder: '',
-    liveStartTime: null,
-    liveDurationMs: 4 * 3600000, 
-    isLiveActive: false,
-    gasUrl: '', // Google Apps Script Web App URL
-    adminKey: '1234' // 기본 관리자 비밀번호
-  });
-  
-  const [regForm, setRegForm] = useState({
-    name: '', price: '', stock: '', category: '', color: '', sizes: '', chestWidth: '', imageUrls: []
-  });
-
-  const [cart, setCart] = useState([]);
-  const [selectedSizes, setSelectedSizes] = useState({}); 
-  const [isOrderModalOpen, setOrderModalOpen] = useState(false);
-  const [isPaymentModalOpen, setPaymentModalOpen] = useState(false); 
-  const [selectedOrderForPay, setSelectedOrderForPay] = useState(null); 
-  const [isMarketConfigOpen, setMarketConfigOpen] = useState(false);
-  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [orderSearchTerm, setOrderSearchTerm] = useState(''); 
-  const [activeCategory, setActiveCategory] = useState('전체');
-  const [notification, setNotification] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(null);
-  const [inputDuration, setInputDuration] = useState(4); 
-
-  const [lookupInfo, setLookupInfo] = useState({ name: '', phone: '' });
-  const [hasSearched, setHasSearched] = useState(false);
-
-  const notify = useCallback((msg, type = 'info') => {
-    const message = typeof msg === 'object' ? (msg.message || JSON.stringify(msg)) : String(msg);
-    setNotification({ msg: message, type });
-    setTimeout(() => setNotification(null), 3000);
-  }, []);
-
-  // Google Sheets로 데이터 전송 함수
-  const syncWithGoogleSheets = async (data, type) => {
-    if (!marketSettings.gasUrl) return;
-    try {
-      await fetch(marketSettings.gasUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, type, warehouse: marketName, timestamp: new Date().toLocaleString() })
-      });
-      console.log('Google Sheets Sync Triggered');
-    } catch (err) {
-      console.error('GAS Sync Error:', err);
-    }
-  };
-
-  const copyToClipboard = (text) => {
-    const textArea = document.createElement("textarea");
-    textArea.value = String(text);
-    document.body.appendChild(textArea);
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      notify("계좌번호가 복사되었습니다.", "success");
-    } catch (err) {
-      notify("복사 실패", "error");
-    }
-    document.body.removeChild(textArea);
-  };
-
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
+        // Firebase 초기화 시도
+        try {
+            firebase.initializeApp(firebaseConfig);
+            var db = firebase.firestore();
+            var auth = firebase.auth();
+        } catch (err) {
+            console.error("Firebase Init Error:", err);
+            document.body.innerHTML = `<div class="p-10 text-center font-bold text-red-500">Firebase 설정이 올바르지 않습니다. 코드를 확인해 주세요.</div>`;
         }
-      } catch (err) {}
-    };
-    initAuth();
-    onAuthStateChanged(auth, (u) => setUser(u));
-  }, []);
 
-  useEffect(() => {
-    if (!user) return;
-    setLoading(true);
+        const APP_ID = "tiktok-live-order-manager";
 
-    const unsubWarehouses = onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', 'registered_warehouses'), (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setRegisteredMarkets(list);
-      const current = list.find(m => m.marketId === marketId);
-      if (current) setMarketName(String(current.name || '창고'));
-    });
+        // 전역 상태
+        let state = {
+            view: 'customer', // customer, admin, login
+            customerTab: 'shop',
+            marketId: 'default-warehouse',
+            marketName: '기본 창고',
+            products: [],
+            orders: [],
+            registeredMarkets: [],
+            marketSettings: { 
+                bankName: '카카오뱅크', 
+                accountNum: '', 
+                accountHolder: '', 
+                liveStartTime: null, 
+                liveDurationMs: 4 * 3600000, 
+                isLiveActive: false, 
+                gasUrl: '', 
+                adminKey: '1234' 
+            },
+            cart: [],
+            selectedSizes: {},
+            lookupInfo: { name: '', phone: '' },
+            hasSearched: false,
+            timeLeft: null,
+            inputDuration: 4
+        };
 
-    const unsubProducts = onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', `${marketId}_products`), (snapshot) => {
-      setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setLoading(false);
-    });
+        function notify(msg, type = 'info') {
+            const container = document.getElementById('notification-container');
+            const box = document.getElementById('notification-box');
+            const msgSpan = document.getElementById('notification-msg');
+            
+            msgSpan.innerText = msg;
+            box.className = `flex items-center gap-3 px-8 py-4 rounded-[2rem] shadow-2xl border ${
+                type === 'error' ? 'bg-red-50 text-red-600 border-red-100' : 
+                type === 'success' ? 'bg-green-50 text-green-600 border-green-100' : 
+                'bg-slate-900 text-white'
+            }`;
+            
+            container.classList.remove('hidden');
+            setTimeout(() => container.classList.add('hidden'), 3000);
+        }
 
-    const unsubOrders = onSnapshot(collection(db, 'artifacts', APP_ID, 'public', 'data', `${marketId}_orders`), (snapshot) => {
-      setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)));
-    });
+        function formatTime(ms) {
+            if (ms === null || ms < 0) return "00:00:00";
+            const h = Math.floor(ms / 3600000);
+            const m = Math.floor((ms % 3600000) / 60000);
+            const s = Math.floor((ms % 60000) / 1000);
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
 
-    const unsubSettings = onSnapshot(doc(db, 'artifacts', APP_ID, 'public', 'data', 'market_configs', marketId), (docSnap) => {
-      if (docSnap.exists()) setMarketSettings(prev => ({ ...prev, ...docSnap.data() }));
-    });
+        async function syncWithGAS(data, type) {
+            if (!state.marketSettings.gasUrl) return;
+            try {
+                await fetch(state.marketSettings.gasUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify({ ...data, type, warehouse: state.marketName, timestamp: new Date().toLocaleString() })
+                });
+            } catch (err) { console.error('GAS Sync Error', err); }
+        }
 
-    return () => { unsubWarehouses(); unsubProducts(); unsubOrders(); unsubSettings(); };
-  }, [user, marketId]);
+        function initDataListeners() {
+            // 창고 목록 구독
+            db.collection('artifacts').doc(APP_ID).collection('registered_warehouses').onSnapshot(snap => {
+                state.registeredMarkets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const curr = state.registeredMarkets.find(m => m.marketId === state.marketId);
+                if (curr) state.marketName = curr.name;
+                render();
+            }, err => {
+                if(err.code === 'permission-denied') notify("Firestore 보안 규칙을 설정해주세요!", "error");
+            });
 
-  const handleAdminLogin = (e) => {
-    e.preventDefault();
-    if (adminPassword === (marketSettings.adminKey || '1234')) {
-      setIsLoginStep(false);
-      setView('admin');
-      notify("관리자 인증 성공", "success");
-    } else {
-      notify("비밀번호가 틀렸습니다.", "error");
-    }
-  };
+            // 상품 목록 구독
+            db.collection('artifacts').doc(APP_ID).collection(`${state.marketId}_products`).onSnapshot(snap => {
+                state.products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                document.getElementById('loading-screen').classList.add('hidden');
+                render();
+            });
 
-  const addProduct = async (e) => {
-    e.preventDefault();
-    if (!regForm.name || !regForm.price) return notify("상품명과 가격은 필수입니다.", "error");
-    const sizes = regForm.sizes.split(',').map(s => s.trim()).filter(Boolean);
-    const data = { 
-      name: String(regForm.name), price: Number(regForm.price), category: String(regForm.category || '일반'), 
-      color: String(regForm.color || ''), chestWidth: String(regForm.chestWidth || ''),
-      imageUrls: regForm.imageUrls,
-      sizes: sizes.length > 0 ? sizes : ['FREE'], stock: Number(regForm.stock) || 0, createdAt: Date.now() 
-    };
-    try { 
-      await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', `${marketId}_products`), data); 
-      notify("상품이 등록되었습니다.", "success");
-      syncWithGoogleSheets(data, 'PRODUCT_ADD'); // 구글 시트 동기화
-    } catch (err) { notify("등록 실패", "error"); }
-  };
+            // 주문 목록 구독
+            db.collection('artifacts').doc(APP_ID).collection(`${state.marketId}_orders`).onSnapshot(snap => {
+                state.orders = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => b.timestamp - a.timestamp);
+                render();
+            });
 
-  const placeOrder = async (e) => {
-    e.preventDefault();
-    if (!marketSettings.isLiveActive) return notify("방송이 마감되었습니다.", "error");
-    const name = e.target.customerName.value.trim();
-    const tiktokId = e.target.tiktokId.value.trim();
-    const orderData = {
-      name: String(name), tiktokId: String(tiktokId), phone: String(e.target.phone.value), address: String(e.target.address.value),
-      items: cart.map(i => `${i.name}(${i.selectedSize})x${i.quantity}`), totalAmount: cart.reduce((s, i) => s + (Number(i.price) * i.quantity), 0),
-      status: 'pending', timestamp: Date.now()
-    };
-    try {
-      const docRef = await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', `${marketId}_orders`), orderData);
-      setCart([]); setOrderModalOpen(false);
-      setSelectedOrderForPay({ id: docRef.id, ...orderData });
-      setPaymentModalOpen(true);
-      setCustomerTab('lookup'); setLookupInfo({ name: String(name), phone: String(orderData.phone) }); setHasSearched(true);
-      syncWithGoogleSheets(orderData, 'ORDER_NEW'); // 구글 시트 동기화
-    } catch (err) { notify("주문 저장 실패", "error"); }
-  };
+            // 설정 정보 구독
+            db.collection('artifacts').doc(APP_ID).collection('market_configs').doc(state.marketId).onSnapshot(doc => {
+                if (doc.exists) state.marketSettings = { ...state.marketSettings, ...doc.data() };
+                render();
+            });
+        }
 
-  const filteredProducts = useMemo(() => 
-    products.filter(p => 
-      String(p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) && 
-      (activeCategory === '전체' || String(p.category) === activeCategory)
-    ), [products, searchTerm, activeCategory]);
+        function render() {
+            const main = document.getElementById('main-view');
+            if (state.view === 'login') main.innerHTML = renderLoginView();
+            else if (state.view === 'admin') main.innerHTML = renderAdminView();
+            else main.innerHTML = renderCustomerView();
+            lucide.createIcons();
+        }
 
-  const filteredOrders = useMemo(() => 
-    orders.filter(o => 
-      !orderSearchTerm || 
-      String(o.name || '').toLowerCase().includes(orderSearchTerm.toLowerCase()) || 
-      String(o.tiktokId || '').toLowerCase().includes(orderSearchTerm.toLowerCase())
-    ), [orders, orderSearchTerm]);
-
-  const LoginView = () => (
-    <div className="h-screen flex items-center justify-center bg-slate-900 p-6">
-      <div className="w-full max-w-sm bg-white rounded-[2.5rem] p-10 shadow-2xl space-y-8 text-center animate-in zoom-in duration-300">
-        <div className="w-20 h-20 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center mx-auto shadow-inner"><Lock size={40} /></div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-black text-slate-800">관리자 보안 인증</h2>
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Administrator Access Only</p>
-        </div>
-        <form onSubmit={handleAdminLogin} className="space-y-4">
-          <input 
-            type="password" 
-            placeholder="관리자 비밀번호" 
-            autoFocus
-            className="w-full p-5 bg-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-pink-200 text-center text-2xl font-black tracking-widest"
-            value={adminPassword}
-            onChange={(e) => setAdminPassword(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setIsLoginStep(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold">취소</button>
-            <button type="submit" className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black shadow-lg">인증하기</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-
-  const CustomerView = () => {
-    const isMarketActive = marketSettings.isLiveActive && timeLeft !== null && timeLeft > 0;
-    return (
-      <div className="max-w-md mx-auto min-h-screen bg-slate-50 pb-32 text-slate-900">
-        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md px-6 py-4 border-b text-center">
-           <h1 className="text-xl font-black tracking-tight mb-1">라이브 셀러 마켓</h1>
-           <p className="text-[10px] text-slate-400 font-bold uppercase mb-2">{String(marketName)}</p>
-          <div className={`p-3 rounded-2xl flex items-center justify-between transition-all ${isMarketActive ? 'bg-pink-500 text-white shadow-lg' : 'bg-slate-200 text-slate-500'}`}>
-            <div className="flex items-center gap-2"><Timer size={18} /><span className="text-xs font-bold uppercase">{isMarketActive ? '주문 마감까지' : '라이브 준비 중'}</span></div>
-            <span className="text-lg font-black font-mono">{formatTime(timeLeft)}</span>
-          </div>
-          <button onClick={() => setIsLoginStep(true)} className="absolute top-4 right-4 p-2 text-slate-300 hover:text-pink-500"><Settings size={20} /></button>
-        </header>
-
-        <div className="flex p-4 gap-2">
-          <button onClick={() => setCustomerTab('shop')} className={`flex-1 py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 ${customerTab === 'shop' ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 border'}`}><ShoppingCart size={18} /> 쇼핑하기</button>
-          <button onClick={() => setCustomerTab('lookup')} className={`flex-1 py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 ${customerTab === 'lookup' ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 border'}`}><History size={18} /> 주문 조회</button>
-        </div>
-
-        <div className="px-4 space-y-4">
-          {customerTab === 'shop' ? (
-            <>
-              <div className="relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input type="text" placeholder="상품명 검색..." className="w-full pl-12 pr-4 py-4 bg-white rounded-2xl shadow-sm border-none outline-none focus:ring-2 focus:ring-pink-200" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-              <div className="grid gap-4">
-                {filteredProducts.map(product => (
-                  <div key={product.id} className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
-                    {product.imageUrls && product.imageUrls.length > 0 && (
-                      <div className="w-full overflow-x-auto flex bg-slate-100 no-scrollbar snap-x">
-                        {product.imageUrls.map((url, idx) => (
-                          <img key={idx} src={String(url)} alt="" className="h-72 w-full object-cover shrink-0 snap-center" />
-                        ))}
-                      </div>
-                    )}
-                    <div className="p-6 space-y-4">
-                      <div>
-                        <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-wider">{String(product.category || '일반')}</span>
-                        <div className="flex flex-wrap items-baseline gap-2 mt-2">
-                          <h3 className="text-xl font-bold text-slate-800">{String(product.name || '')}</h3>
-                          {product.color && <span className="text-xl font-bold text-pink-500">({String(product.color)})</span>}
+        function renderCustomerView() {
+            const isMarketActive = state.marketSettings.isLiveActive && (state.timeLeft === null || state.timeLeft > 0);
+            return `
+                <div class="max-w-md mx-auto min-h-screen bg-slate-50 pb-32 text-slate-900 animate-in fade-in duration-300">
+                    <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md px-6 py-4 border-b text-center">
+                        <h1 class="text-xl font-black mb-1">라이브 셀러 마켓</h1>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-2">${state.marketName}</p>
+                        <div class="p-3 rounded-2xl flex items-center justify-between transition-all ${isMarketActive ? 'bg-pink-500 text-white shadow-lg shadow-pink-100' : 'bg-slate-200 text-slate-500'}">
+                            <div class="flex items-center gap-2"><i data-lucide="timer" class="w-4 h-4"></i><span class="text-xs font-bold uppercase">${isMarketActive ? '주문 마감까지' : '라이브 준비 중'}</span></div>
+                            <span id="countdown-timer" class="text-lg font-black font-mono">${formatTime(state.timeLeft)}</span>
                         </div>
-                        <p className="text-pink-600 font-black text-2xl mt-1">{(Number(product.price) || 0).toLocaleString()}원</p>
-                        {product.chestWidth && (
-                          <p className="mt-2 text-xs font-bold text-slate-500 flex items-center gap-1 bg-slate-50 w-fit px-3 py-1 rounded-full border border-slate-100">
-                            <Scissors size={12} className="text-pink-400" /> 가슴 단면: {String(product.chestWidth)}cm
-                          </p>
-                        )}
-                      </div>
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap gap-2">
-                          {(product.sizes || ['FREE']).map(size => (
-                            <button key={size} onClick={() => setSelectedSizes(prev => ({...prev, [product.id]: size}))} disabled={Number(product.stock) <= 0} className={`flex-1 min-w-[80px] px-3 py-4 rounded-2xl text-xs font-bold transition-all border-2 ${selectedSizes[product.id] === size ? 'bg-pink-500 border-pink-500 text-white shadow-lg' : 'bg-white border-slate-100 text-slate-600 active:border-pink-200'}`}>{String(size)}</button>
-                          ))}
+                        <button onclick="state.view='login'; render();" class="absolute top-4 right-4 p-2 text-slate-300 hover:text-pink-500"><i data-lucide="settings" class="w-5 h-5"></i></button>
+                    </header>
+
+                    <div class="flex p-4 gap-2">
+                        <button onclick="state.customerTab='shop'; render();" class="flex-1 py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 ${state.customerTab === 'shop' ? 'active-tab' : 'inactive-tab'}"><i data-lucide="shopping-cart" class="w-4 h-4"></i> 쇼핑하기</button>
+                        <button onclick="state.customerTab='lookup'; render();" class="flex-1 py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 ${state.customerTab === 'lookup' ? 'active-tab' : 'inactive-tab'}"><i data-lucide="history" class="w-4 h-4"></i> 주문 조회</button>
+                    </div>
+
+                    <div class="px-4 space-y-4">
+                        ${state.customerTab === 'shop' ? renderProductList() : renderOrderLookup()}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderProductList() {
+            if (state.products.length === 0) return `<div class="py-20 text-center text-slate-300 font-bold">등록된 상품이 없습니다.</div>`;
+            return state.products.map(p => `
+                <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden mb-4">
+                    ${p.imageUrls?.length > 0 ? `<img src="${p.imageUrls[0]}" class="h-72 w-full object-cover">` : ''}
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <span class="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-wider">${p.category || '일반'}</span>
+                            <div class="flex flex-wrap items-baseline gap-2 mt-2">
+                                <h3 class="text-xl font-bold text-slate-800">${p.name}</h3>
+                                ${p.color ? `<span class="text-xl font-bold text-pink-500">(${p.color})</span>` : ''}
+                            </div>
+                            <p class="text-pink-600 font-black text-2xl mt-1">${(p.price || 0).toLocaleString()}원</p>
                         </div>
-                        <button onClick={() => addToCart(product)} disabled={!isMarketActive || Number(product.stock) <= 0} className={`w-full py-5 rounded-2xl font-black text-base flex items-center justify-center gap-2 transition-all ${selectedSizes[product.id] && isMarketActive ? 'bg-slate-900 text-white shadow-xl' : 'bg-slate-100 text-slate-300'}`}>
-                          {isMarketActive ? <PlusCircle size={20} /> : <Clock size={20}/>}
-                          {isMarketActive ? (selectedSizes[product.id] ? `${String(selectedSizes[product.id])} 사이즈 담기` : '사이즈를 먼저 골라주세요') : '라이브 시간만 가능'}
-                        </button>
-                      </div>
+                        <div class="space-y-3">
+                            <div class="flex flex-wrap gap-2">
+                                ${p.sizes?.map(s => `
+                                    <button onclick="selectSize('${p.id}', '${s}')" class="flex-1 min-w-[80px] px-3 py-4 rounded-2xl text-xs font-bold border-2 transition-all ${state.selectedSizes[p.id] === s ? 'size-checked' : 'bg-white border-slate-100 text-slate-600'}">${s}</button>
+                                `).join('')}
+                            </div>
+                            <button onclick="handleAddToCart('${p.id}')" class="w-full py-5 rounded-2xl font-black text-base flex items-center justify-center gap-2 bg-slate-900 text-white shadow-xl active:scale-95 transition-transform">장바구니 담기</button>
+                        </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="space-y-4 text-center">
-              <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
-                <div className="w-12 h-12 bg-pink-50 text-pink-500 rounded-full flex items-center justify-center mx-auto"><UserCheck size={24} /></div>
-                <h3 className="font-black text-slate-800 text-lg">내 주문 내역 조회</h3>
-                <div className="space-y-2">
-                  <input placeholder="입금자명" className="w-full p-4 bg-slate-50 rounded-2xl outline-none" onChange={(e) => { setLookupInfo(p => ({...p, name: e.target.value})); setHasSearched(false); }} />
-                  <input placeholder="연락처" className="w-full p-4 bg-slate-50 rounded-2xl outline-none" onChange={(e) => { setLookupInfo(p => ({...p, phone: e.target.value})); setHasSearched(false); }} />
-                  <button onClick={() => setHasSearched(true)} className="w-full bg-slate-900 text-white p-4 rounded-2xl font-black">조회하기</button>
                 </div>
-              </div>
-              {hasSearched && (
-                <div className="space-y-3">
-                  {orders.filter(o => String(o.name) === String(lookupInfo.name)).map(order => (
-                    <div key={order.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-2 text-left">
-                      <div className="flex justify-between items-center border-b pb-3">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black ${order.status === 'paid' ? 'bg-green-50 text-white' : 'bg-orange-400 text-white'}`}>{order.status === 'paid' ? '확인됨' : '입금대기'}</span>
-                        <span className="text-xl font-black">{(Number(order.totalAmount) || 0).toLocaleString()}원</span>
-                      </div>
-                      <div className="py-2 space-y-1">
-                        {order.tiktokId && <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><AtSign size={10}/>틱톡 ID: {String(order.tiktokId)}</p>}
-                        {order.items?.map((it, i) => <p key={i} className="text-xs text-slate-500">{String(it)}</p>)}
-                      </div>
-                      {order.status === 'pending' && (
-                        <button onClick={() => { setSelectedOrderForPay(order); setPaymentModalOpen(true); }} className="w-full py-4 bg-pink-500 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2"><Wallet size={18} /> 지금 바로 입금하기</button>
-                      )}
+            `).join('');
+        }
+
+        function renderOrderLookup() {
+            return `
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
+                    <h3 class="font-black text-slate-800 text-lg flex items-center gap-2"><i data-lucide="user-check" class="text-pink-500"></i> 내 주문 조회</h3>
+                    <input id="lookup-name" placeholder="입금자명" class="w-full p-4 bg-slate-50 rounded-2xl outline-none" value="${state.lookupInfo.name}" />
+                    <button onclick="handleLookup()" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-black">조회하기</button>
+                </div>
+                <div id="lookup-results" class="space-y-3">
+                    ${state.hasSearched ? renderLookupResults() : ''}
+                </div>
+            `;
+        }
+
+        function renderLookupResults() {
+            const myOrders = state.orders.filter(o => o.name === state.lookupInfo.name);
+            if (myOrders.length === 0) return `<div class="py-10 text-center text-slate-400 font-bold">주문 내역이 없습니다.</div>`;
+            return myOrders.map(o => `
+                <div class="bg-white p-6 rounded-[2.5rem] border-2 border-pink-50 space-y-3">
+                    <div class="flex justify-between items-center border-b pb-3">
+                        <span class="px-3 py-1 rounded-full text-[10px] font-black ${o.status === 'paid' ? 'bg-green-500 text-white' : 'bg-orange-400 text-white'}">${o.status === 'paid' ? '확인완료' : '입금대기'}</span>
+                        <span class="text-xl font-black">${(o.totalAmount || 0).toLocaleString()}원</span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const AdminView = () => (
-    <div className="max-w-7xl mx-auto p-4 md:p-10 space-y-8 bg-white min-h-screen text-slate-900">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-black tracking-tighter">통합 관제 센터</h1>
-            <button onClick={() => setMarketConfigOpen(true)} className="px-5 py-2.5 bg-blue-600 text-white text-xs font-black rounded-xl flex items-center gap-2 shadow-lg hover:bg-blue-700 transition-all active:scale-95">
-              <Warehouse size={18}/> 창고 관리
-            </button>
-          </div>
-          <div className="flex items-center gap-2 text-slate-400 font-medium bg-slate-50 w-fit px-4 py-1.5 rounded-full border border-slate-100">
-            <MapPin size={14} className="text-pink-500" />
-            <span className="text-slate-900 font-bold text-sm">현재 창고: {String(marketName)}</span>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
-          {!marketSettings.isLiveActive ? (
-            <div className="flex flex-col md:flex-row items-center gap-3 bg-green-50 p-4 rounded-[2rem] border-2 border-green-200 shadow-xl">
-              <div className="flex items-center bg-white p-2 rounded-2xl border border-green-100">
-                <label className="text-[10px] font-black text-green-600 px-2 uppercase">시간 설정</label>
-                <input type="number" min="1" max="10" value={inputDuration} onChange={(e) => setInputDuration(Number(e.target.value))} className="w-16 border-none rounded-xl p-2 text-center font-black text-lg outline-none" />
-                <span className="text-xs font-bold text-green-800 px-2">시간</span>
-              </div>
-              <button onClick={toggleLive} className="w-full md:w-auto flex items-center justify-center gap-3 px-10 py-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-[2rem] font-black text-xl shadow-2xl animate-pulse"><Play size={24} fill="white" />라이브 방송 시작</button>
-            </div>
-          ) : (
-            <button onClick={toggleLive} className="flex items-center justify-center gap-3 px-10 py-5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-[2rem] font-black text-xl shadow-2xl"><Square size={24} fill="white" />라이브 강제 종료</button>
-          )}
-          <button onClick={() => setView('customer')} className="flex-1 md:flex-none px-6 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-all">라이브 화면</button>
-        </div>
-      </header>
-
-      {marketSettings.isLiveActive && (
-        <div className="bg-pink-500 text-white p-8 rounded-[3rem] shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 transition-all animate-in fade-in slide-in-from-top-4">
-          <div className="flex items-center gap-4"><div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center"><Timer size={24} /></div><div><h2 className="text-2xl font-black">라이브 세션 진행 중</h2><p className="text-xs opacity-70">마감 예정 시간: {formatTime(marketSettings.liveDurationMs)}</p></div></div>
-          <div className="text-6xl font-black font-mono tracking-tighter">{formatTime(timeLeft)}</div>
-        </div>
-      )}
-
-      <div className="grid lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-4 space-y-6">
-          <button onClick={() => setIsBulkModalOpen(true)} className="w-full py-6 bg-blue-50 text-blue-600 rounded-[2.5rem] border-2 border-blue-100 font-black flex flex-col items-center justify-center gap-2 hover:bg-blue-100 transition-all"><UploadCloud size={24} /><span>대량 품목 일괄 등록</span></button>
-          
-          <section className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
-            <div className="flex justify-between items-center"><h2 className="text-xl font-bold flex items-center gap-2"><Plus size={22} className="text-pink-500" /> 상품 개별 등록</h2><button onClick={resetRegForm} className="p-2 text-slate-400 bg-white rounded-full border border-slate-100 shadow-sm hover:text-blue-500 transition-all" title="입력창 초기화"><RefreshCw size={18} /></button></div>
-            <form onSubmit={addProduct} className="space-y-4">
-              <div className="space-y-2"><label className="text-[11px] font-black text-slate-400 ml-1 flex items-center gap-2"><ImageIcon size={12}/> 사진 첨부 (최대 4장)</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {regForm.imageUrls.map((url, idx) => (
-                    <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200">
-                      <img src={String(url)} className="w-full h-full object-cover" alt="" />
-                      <button type="button" onClick={() => removeImage(idx)} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><XCircle size={12}/></button>
+                    <div class="text-xs text-slate-500 space-y-1">
+                        ${o.items?.map(it => `<div>• ${it}</div>`).join('')}
                     </div>
-                  ))}
-                  {regForm.imageUrls.length < 4 && (
-                    <label className="aspect-square bg-white rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-pink-300 transition-all">
-                      <Camera size={20} className="text-slate-300" />
-                      <span className="text-[9px] font-bold text-slate-400 mt-1">{regForm.imageUrls.length}/4</span>
-                      <input type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" />
-                    </label>
-                  )}
                 </div>
-              </div>
-              <input name="name" value={String(regForm.name)} onChange={handleRegFormChange} required placeholder="상품명" className="w-full p-4 bg-white rounded-2xl outline-none focus:ring-2 focus:ring-pink-500 shadow-sm border border-slate-100" />
-              <div className="grid grid-cols-2 gap-2"><input name="price" value={String(regForm.price)} onChange={handleRegFormChange} type="number" required placeholder="가격" className="w-full p-4 bg-white rounded-2xl outline-none shadow-sm border border-slate-100" /><input name="stock" value={String(regForm.stock)} onChange={handleRegFormChange} type="number" placeholder="재고" className="w-full p-4 bg-white rounded-2xl outline-none shadow-sm border border-slate-100" /></div>
-              <div className="grid grid-cols-3 gap-2">
-                <input name="category" value={String(regForm.category)} onChange={handleRegFormChange} placeholder="카테고리" className="col-span-1 w-full p-4 bg-white rounded-2xl outline-none shadow-sm border border-slate-100" />
-                <input name="color" value={String(regForm.color)} onChange={handleRegFormChange} placeholder="색상" className="col-span-1 w-full p-4 bg-white rounded-2xl outline-none border-2 border-pink-100 shadow-sm" />
-                <div className="relative col-span-1"><Scissors className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} /><input name="chestWidth" value={String(regForm.chestWidth)} onChange={handleRegFormChange} placeholder="가단(cm)" className="w-full pl-9 p-4 bg-white rounded-2xl outline-none border border-slate-100 shadow-sm" /></div>
-              </div>
-              <div className="relative"><Ruler className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} /><input name="sizes" value={String(regForm.sizes)} onChange={handleRegFormChange} placeholder="사이즈 (S, M, L)" className="w-full pl-10 p-4 bg-white rounded-2xl border-none outline-none shadow-sm border border-slate-100" /></div>
-              <button className="w-full bg-slate-900 text-white p-5 rounded-2xl font-bold hover:bg-black transition-all active:scale-95 shadow-lg">상품 등록하기</button>
-            </form>
-          </section>
+            `).join('');
+        }
 
-          <section className="bg-yellow-50/50 p-8 rounded-[2.5rem] border border-yellow-200 shadow-sm space-y-4">
-            <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800"><Database size={22} className="text-blue-500" /> 구글 시트 & 계좌 설정</h2>
-            <form onSubmit={saveMarketSettings} className="space-y-3">
-              <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 ml-1">GAS Web App URL</label><input name="gasUrl" defaultValue={marketSettings.gasUrl} placeholder="https://script.google.com/macros/s/..." className="w-full p-4 bg-white rounded-2xl outline-none shadow-sm border border-yellow-100" /></div>
-              <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 ml-1">은행명</label><input name="bankName" required defaultValue={marketSettings.bankName} className="w-full p-4 bg-white rounded-2xl outline-none shadow-sm border border-yellow-100" /></div>
-              <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 ml-1">계좌번호</label><input name="accountNum" required defaultValue={marketSettings.accountNum} className="w-full p-4 bg-white rounded-2xl outline-none shadow-sm border border-yellow-100" /></div>
-              <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 ml-1">예금주</label><input name="accountHolder" required defaultValue={marketSettings.accountHolder} className="w-full p-4 bg-white rounded-2xl outline-none shadow-sm border border-yellow-100" /></div>
-              <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 ml-1">관리자 비밀번호</label><input name="adminKey" required defaultValue={marketSettings.adminKey} className="w-full p-4 bg-white rounded-2xl outline-none shadow-sm border border-yellow-100" /></div>
-              <button className="w-full bg-slate-900 text-white p-4 rounded-2xl font-black shadow-md hover:bg-black transition-all">설정 저장</button>
-            </form>
-          </section>
-        </div>
-
-        <div className="lg:col-span-8 space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-2xl font-black flex items-center gap-2"><ClipboardList size={26} className="text-blue-500"/> 주문 현황 ({filteredOrders.length})</h2>
-            <div className="relative flex-1 max-w-sm">
-              <UserSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input type="text" placeholder="아이디 또는 이름 검색..." className="w-full pl-10 pr-4 py-3 bg-slate-100 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 outline-none text-sm shadow-inner" value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            {filteredOrders.map(order => (
-              <div key={order.id} className={`p-6 rounded-[2.5rem] border-2 transition-all ${order.status === 'paid' ? 'bg-green-50 border-green-100' : 'bg-white border-slate-100 shadow-xl'}`}>
-                <div className="flex justify-between items-start mb-4">
-                  <div><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">주문자</p><h3 className="text-xl font-black text-slate-900">{String(order.tiktokId || '미입력')}({String(order.name || '')})</h3></div>
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-black ${order.status === 'paid' ? 'bg-green-500 text-white' : 'bg-orange-400 text-white shadow-sm'}`}>{order.status === 'paid' ? '확인완료' : '미입금'}</span>
-                </div>
-                <div className="bg-slate-900 text-white p-5 rounded-[2rem] mb-4 space-y-2 text-[11px] font-bold shadow-inner">
-                  {order.items?.map((it, i) => (<div key={i} className="flex justify-between items-center border-b border-slate-800 pb-1 last:border-0"><span className="opacity-80 truncate mr-2">{String(it)}</span></div>))}
-                  <div className="pt-2 flex justify-between items-end"><span className="text-[9px] text-slate-500 uppercase tracking-widest">결제 금액</span><p className="font-black text-pink-400 text-xl">{(Number(order.totalAmount) || 0).toLocaleString()}원</p></div>
-                </div>
-                <div className="flex flex-col gap-2">
-                   <button onClick={() => updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', `${marketId}_orders`, order.id), { status: order.status === 'paid' ? 'pending' : 'paid' })} className={`w-full py-4 rounded-2xl font-black text-sm transition-all ${order.status === 'paid' ? 'bg-white border-2 text-slate-400' : 'bg-green-500 text-white shadow-lg'}`}>{order.status === 'paid' ? '확인 취소' : '입금 확인 완료'}</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 창고 관리 모달 */}
-      {isMarketConfigOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[120] animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-4xl rounded-[3rem] p-10 shadow-2xl max-h-[90vh] overflow-y-auto border border-white/20">
-            <div className="flex justify-between items-center mb-8 border-b pb-4">
-              <div><h2 className="text-3xl font-black flex items-center gap-2 text-slate-800"><Warehouse className="text-blue-600" /> 창고 관리 시스템</h2></div>
-              <button onClick={() => setMarketConfigOpen(false)} className="text-slate-300 hover:text-slate-900 transition-colors"><XCircle size={36} /></button>
-            </div>
-            <div className="grid md:grid-cols-2 gap-12">
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold flex items-center gap-2"><PlusCircle size={20} className="text-blue-500"/> 신규 창고 등록</h3>
-                <form onSubmit={registerNewWarehouse} className="space-y-4 bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
-                  <input name="wName" required placeholder="창고 이름" className="w-full p-4 bg-white rounded-2xl outline-none shadow-sm border border-slate-100" />
-                  <input name="wId" required placeholder="창고 아이디 (영문)" className="w-full p-4 bg-white rounded-2xl outline-none shadow-sm border border-slate-100" />
-                  <button className="w-full bg-blue-600 text-white p-5 rounded-2xl font-black shadow-lg">신규 창고 추가</button>
-                </form>
-              </div>
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800"><LayoutGrid size={20} className="text-pink-500"/> 등록된 창고 목록</h3>
-                <div className="space-y-3">
-                  {registeredMarkets.map(m => (
-                    <div key={m.id} className={`p-6 rounded-[2rem] border-2 flex justify-between items-center transition-all ${marketId === m.marketId ? 'border-pink-500 bg-pink-50' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
-                      <div><p className="font-black text-slate-800 text-lg">{String(m.name)}</p></div>
-                      <div className="flex items-center gap-2">
-                        {marketId !== m.marketId ? (
-                          <button onClick={() => { setMarketId(String(m.marketId)); setMarketConfigOpen(false); notify(`'${String(m.name)}' 관리 모드 전환`); }} className="px-6 py-2.5 bg-slate-900 text-white text-xs font-black rounded-xl">이동</button>
-                        ) : (
-                          <span className="px-4 py-2.5 bg-pink-500 text-white text-[10px] font-black rounded-xl uppercase">관리중</span>
-                        )}
-                        {m.marketId !== 'default-warehouse' && (
-                          <button onClick={() => deleteWarehouseEntry(m.id, m.marketId)} className="p-3 text-slate-300 hover:text-red-500"><Trash2 size={20}/></button>
-                        )}
-                      </div>
+        function renderLoginView() {
+            return `
+                <div class="h-screen flex items-center justify-center bg-slate-900 p-6">
+                    <div class="w-full max-w-sm bg-white rounded-[2.5rem] p-10 shadow-2xl space-y-8 text-center animate-in zoom-in duration-300">
+                        <div class="w-20 h-20 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center mx-auto"><i data-lucide="lock" class="w-10 h-10"></i></div>
+                        <h2 class="text-2xl font-black text-slate-800">관리자 인증</h2>
+                        <input type="password" id="admin-pw" placeholder="비밀번호" class="w-full p-5 bg-slate-100 rounded-2xl text-center text-2xl font-black tracking-widest outline-none focus:ring-4 focus:ring-pink-200" />
+                        <div class="flex gap-2">
+                            <button onclick="state.view='customer'; render();" class="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold">취소</button>
+                            <button onclick="handleLogin()" class="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black shadow-lg">인증하기</button>
+                        </div>
                     </div>
-                  ))}
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+            `;
+        }
 
-  if (loading) return (
-    <div className="h-screen flex flex-col items-center justify-center bg-slate-50">
-      <div className="relative">
-        <div className="w-16 h-16 border-4 border-pink-100 border-t-pink-500 rounded-full animate-spin"></div>
-        <Warehouse size={24} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-pink-500" />
-      </div>
-      <p className="mt-6 font-black text-slate-400 animate-pulse">데이터 동기화 중...</p>
-    </div>
-  );
+        function renderAdminView() {
+            return `
+                <div class="max-w-7xl mx-auto p-4 md:p-10 space-y-8 bg-white min-h-screen text-slate-900 animate-in fade-in duration-500">
+                    <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8">
+                        <div>
+                            <h1 class="text-3xl font-black tracking-tighter">통합 관제 센터</h1>
+                            <p class="text-slate-400 font-bold text-sm mt-2">현재 창고: ${state.marketName}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="state.view='customer'; render();" class="px-6 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-all">고객 화면 보기</button>
+                        </div>
+                    </header>
+                    <div class="grid lg:grid-cols-12 gap-8">
+                        <div class="lg:col-span-4 space-y-6">
+                            <div class="bg-slate-50 p-8 rounded-[2.5rem] space-y-6 border border-slate-100 shadow-sm">
+                                <h2 class="text-xl font-bold flex items-center gap-2"><i data-lucide="plus-circle" class="text-pink-500"></i> 상품 등록</h2>
+                                <input id="reg-name" placeholder="상품명" class="w-full p-4 bg-white rounded-2xl border outline-none" />
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input id="reg-price" type="number" placeholder="가격" class="w-full p-4 bg-white rounded-2xl border outline-none" />
+                                    <input id="reg-stock" type="number" placeholder="재고" class="w-full p-4 bg-white rounded-2xl border outline-none" />
+                                </div>
+                                <input id="reg-sizes" placeholder="사이즈 (쉼표 구분: S, M, L)" class="w-full p-4 bg-white rounded-2xl border outline-none" />
+                                <button onclick="handleAddProduct()" class="w-full bg-pink-500 text-white p-5 rounded-2xl font-bold shadow-lg shadow-pink-100">등록하기</button>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-8 space-y-6">
+                            <h2 class="text-2xl font-black flex items-center gap-2"><i data-lucide="clipboard-list" class="text-blue-500"></i> 주문 현황 (${state.orders.length})</h2>
+                            <div id="admin-orders" class="grid md:grid-cols-2 gap-4">
+                                ${renderAdminOrders()}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
 
-  return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {isLoginStep ? <LoginView /> : view === 'customer' ? <CustomerView /> : <AdminView />}
-      
-      {/* 주문 모달 (고객용) */}
-      {isOrderModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-end justify-center p-0 z-[60]">
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
-            <div className="flex justify-between items-center mb-4"><h2 className="text-2xl font-black">최종 주문서 작성</h2><button onClick={() => setOrderModalOpen(false)} className="text-slate-300"><XCircle size={28} /></button></div>
-            <form onSubmit={placeOrder} className="space-y-4">
-              <input name="tiktokId" required placeholder="틱톡 아이디 (필수)" className="w-full p-4 bg-slate-50 rounded-2xl outline-none" />
-              <input name="customerName" required placeholder="입금자 성함 (실명 - 필수)" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" />
-              <input name="phone" required placeholder="연락처" className="w-full p-4 bg-slate-50 rounded-2xl outline-none" />
-              <textarea name="address" required placeholder="배송지 상세 주소" rows="3" className="w-full p-4 bg-slate-50 rounded-2xl outline-none resize-none" />
-              <button className="w-full bg-pink-500 text-white p-5 rounded-2xl font-black text-xl hover:bg-pink-600 shadow-xl">주문 완료 및 입금 안내</button>
-            </form>
-          </div>
-        </div>
-      )}
+        function renderAdminOrders() {
+            if (state.orders.length === 0) return `<div class="col-span-2 py-20 text-center text-slate-300 font-bold border-2 border-dashed rounded-[3rem]">주문 내역이 없습니다.</div>`;
+            return state.orders.map(o => `
+                <div class="p-6 rounded-[2.5rem] border-2 bg-white space-y-4 shadow-sm hover:shadow-xl transition-all">
+                    <div class="flex justify-between">
+                        <h3 class="text-xl font-black">${o.tiktokId || 'ID없음'}(${o.name || '무명'})</h3>
+                        <span class="px-3 py-1 rounded-full text-[10px] font-black ${o.status === 'paid' ? 'bg-green-500 text-white' : 'bg-orange-400 text-white'}">${o.status === 'paid' ? '완료' : '대기'}</span>
+                    </div>
+                    <div class="bg-slate-900 text-white p-4 rounded-3xl text-xs font-medium space-y-1">
+                        ${o.items?.map(it => `<div>• ${it}</div>`).join('')}
+                        <p class="mt-3 text-pink-400 font-black text-lg text-right border-t border-slate-800 pt-2">${(o.totalAmount || 0).toLocaleString()}원</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="toggleOrderStatus('${o.id}', '${o.status}')" class="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200">${o.status === 'paid' ? '취소' : '입금확인'}</button>
+                        <button onclick="handleDeleteOrder('${o.id}')" class="p-4 bg-red-50 text-red-400 rounded-2xl"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
 
-      {/* 입금 안내 모달 */}
-      {isPaymentModalOpen && selectedOrderForPay && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in duration-300 border border-slate-100 text-center space-y-6">
-            <div className="w-20 h-20 bg-[#FEE500] text-slate-900 rounded-[2rem] flex items-center justify-center mx-auto shadow-lg"><CreditCard size={36} /></div>
-            <div className="space-y-1"><h2 className="text-2xl font-black text-slate-900">입금 안내</h2><p className="text-xs text-slate-400 font-bold uppercase tracking-widest">배송 준비를 위한 송금 요청</p></div>
-            <div className="bg-slate-50 p-6 rounded-[2rem] space-y-1 border border-slate-100"><p className="text-[10px] text-slate-400 font-black uppercase">총 입금 금액</p><p className="text-3xl font-black text-pink-600">{(Number(selectedOrderForPay.totalAmount) || 0).toLocaleString()}원</p></div>
-            <div className="space-y-2 bg-yellow-50/50 p-5 rounded-[2rem] border border-yellow-100">
-              <p className="text-[11px] text-yellow-700 font-black uppercase tracking-tighter">입금 계좌 ({String(marketSettings.bankName)})</p>
-              <p className="text-lg font-black text-slate-800 tracking-tight">{String(marketSettings.accountNum)}</p>
-              <p className="text-sm font-bold text-slate-500">예금주: {String(marketSettings.accountHolder)}</p>
-            </div>
-            <div className="bg-red-50 p-5 rounded-[2rem] border border-red-100 space-y-2 text-left">
-              <div className="flex items-center gap-1 text-red-600 font-black text-xs"><AlertTriangle size={16}/> 필독 주의사항</div>
-              <ul className="text-[11px] text-red-700 font-bold leading-relaxed space-y-1.5">
-                <li className="flex gap-1"><span>•</span> <span className="underline italic">주문시 아이디, 입금자명</span>으로 송금해 주세요.</li>
-                <li>• 방송 중에만 주문 및 입금이 가능합니다.</li>
-                <li>• 미입금 시 제품 발송이 불가하며 주문이 자동 취소됩니다.</li>
-              </ul>
-            </div>
-            <div className="flex flex-col gap-3 pt-2">
-              <a href={`supertoss://send?bank=${String(marketSettings.bankName)}&account=${String(marketSettings.accountNum)}&amount=${Number(selectedOrderForPay.totalAmount)}`} className="w-full py-5 bg-blue-500 text-white rounded-2xl font-black flex items-center justify-center gap-2 active:scale-95 shadow-lg"><Send size={20} /> 토스 앱 바로 입금</a>
-              <button onClick={() => copyToClipboard(marketSettings.accountNum)} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black flex items-center justify-center gap-2 active:scale-95"><Copy size={20} /> 계좌번호 복사</button>
-              <button onClick={() => setPaymentModalOpen(false)} className="w-full py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95"><ArrowLeft size={18} /> 이전 화면으로 돌아가기</button>
-            </div>
-          </div>
-        </div>
-      )}
+        function selectSize(pid, size) {
+            state.selectedSizes[pid] = size;
+            render();
+        }
 
-      {/* Global Notification */}
-      {notification && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[150] animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className={`flex items-center gap-3 px-8 py-4 rounded-[2rem] shadow-2xl border ${notification.type === 'error' ? 'bg-red-50 text-red-600' : notification.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-slate-900 text-white'}`}>
-            <Bell size={18} />
-            <span className="font-black text-sm">{String(notification.msg || '')}</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+        function handleAddToCart(pid) {
+            const size = state.selectedSizes[pid];
+            if (!size) return notify("사이즈를 선택해주세요.", "error");
+            const prod = state.products.find(p => p.id === pid);
+            if (prod.stock <= 0) return notify("재고가 부족합니다.", "error");
+            
+            const itemString = `${prod.name}(${size})`;
+            state.cart.push({ ...prod, selectedSize: size, quantity: 1, string: itemString });
+            notify("장바구니에 담았습니다.", "success");
+            
+            // 주문서 작성 유도 (간소화된 흐름)
+            if(confirm("주문서를 작성하시겠습니까?")) handlePlaceOrder();
+        }
+
+        async function handlePlaceOrder() {
+            if(state.cart.length === 0) return;
+            const tId = prompt("틱톡 아이디를 입력하세요 (필수)");
+            const name = prompt("입금자명을 입력하세요 (실명 필수)");
+            if(!tId || !name) return notify("정보를 모두 입력해야 합니다.", "error");
+
+            const orderData = {
+                tiktokId: tId,
+                name: name,
+                items: state.cart.map(i => i.string),
+                totalAmount: state.cart.reduce((s, i) => s + i.price, 0),
+                status: 'pending',
+                timestamp: Date.now()
+            };
+
+            await db.collection('artifacts').doc(APP_ID).collection(`${state.marketId}_orders`).add(orderData);
+            state.cart = [];
+            notify("주문이 접수되었습니다!", "success");
+            render();
+        }
+
+        function handleLogin() {
+            const pw = document.getElementById('admin-pw').value;
+            if (pw === state.marketSettings.adminKey) {
+                state.view = 'admin';
+                notify("인증 성공", "success");
+                render();
+            } else {
+                notify("비밀번호 오류", "error");
+            }
+        }
+
+        async function handleAddProduct() {
+            const name = document.getElementById('reg-name').value;
+            const price = Number(document.getElementById('reg-price').value);
+            const stock = Number(document.getElementById('reg-stock').value);
+            const sizes = document.getElementById('reg-sizes').value.split(',').map(s => s.trim()).filter(Boolean);
+            
+            if(!name || !price) return notify("이름과 가격을 입력하세요.", "error");
+
+            const data = { name, price, stock, sizes, category: '의류', imageUrls: [], createdAt: Date.now() };
+            await db.collection('artifacts').doc(APP_ID).collection(`${state.marketId}_products`).add(data);
+            notify("상품 등록 완료", "success");
+        }
+
+        async function toggleOrderStatus(oid, curr) {
+            const next = curr === 'paid' ? 'pending' : 'paid';
+            await db.collection('artifacts').doc(APP_ID).collection(`${state.marketId}_orders`).doc(oid).update({ status: next });
+        }
+
+        async function handleDeleteOrder(oid) {
+            if(!confirm("주문을 삭제하시겠습니까?")) return;
+            await db.collection('artifacts').doc(APP_ID).collection(`${state.marketId}_orders`).doc(oid).delete();
+            notify("삭제되었습니다.");
+        }
+
+        function handleLookup() {
+            const name = document.getElementById('lookup-name').value;
+            if(!name) return notify("이름을 입력하세요.", "error");
+            state.lookupInfo.name = name;
+            state.hasSearched = true;
+            render();
+        }
+
+        // 초기화
+        window.onload = () => {
+            // 백스페이스 뒤로가기 방지
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) e.preventDefault();
+            });
+
+            auth.signInAnonymously().then(() => {
+                initDataListeners();
+            });
+
+            setInterval(() => {
+                if (state.marketSettings.isLiveActive && state.marketSettings.liveStartTime) {
+                    const elapsed = Date.now() - state.marketSettings.liveStartTime;
+                    state.timeLeft = state.marketSettings.liveDurationMs - elapsed;
+                    const timerEl = document.getElementById('countdown-timer');
+                    if (timerEl) timerEl.innerText = formatTime(state.timeLeft);
+                }
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
