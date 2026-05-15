@@ -9,23 +9,35 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
         body { font-family: 'Pretendard', sans-serif; background-color: #0f172a; color: #f1f5f9; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+        
+        /* 카드 및 버튼 공통 스타일 */
         .gogojin-card { background: #1e293b; border: 1px solid #334155; border-radius: 28px; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .btn-primary { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; font-weight: 900; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3); }
+        .btn-go-broadcast { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; font-weight: 900; transition: all 0.2s; box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.5); }
         .tab-active { border-bottom: 4px solid #ef4444; color: #ef4444; font-weight: 900; }
+        
+        /* 지점 선택 시 하이라이트 */
         .warehouse-active { border: 2px solid #ef4444 !important; background: rgba(239, 68, 68, 0.15) !important; transform: scale(1.02); }
+        
         .qty-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: #334155; font-weight: 900; }
         .qty-btn:active { transform: scale(0.9); background: #ef4444; }
+        
         .image-overlay { background: linear-gradient(to top, rgba(15, 23, 42, 0.9) 0%, transparent 60%); }
-        .bank-box { background: #2563eb; border-radius: 24px; padding: 20px; text-align: center; }
+        
+        /* 입력창 스타일 */
         .input-highlight { background-color: #ffffff !important; color: #000000 !important; font-weight: 800 !important; }
         .input-highlight::placeholder { color: #94a3b8 !important; }
+
         .animate-fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="pb-32">
+
     <div id="app" class="max-w-md mx-auto min-h-screen relative">
+        <!-- 상단 헤더 -->
         <header class="sticky top-0 z-50 bg-[#0f172a]/95 backdrop-blur-xl px-6 py-6 border-b border-slate-800 text-center">
             <div class="flex justify-between items-center mb-1">
                 <span id="live-indicator" class="text-[10px] bg-slate-600 text-white px-2 py-0.5 rounded-full font-black tracking-tighter uppercase">대기 중</span>
@@ -35,6 +47,7 @@
             </div>
             <h1 class="text-4xl font-black tracking-tighter italic text-red-500">고고진 마켓</h1>
             <p id="current-warehouse-display" class="text-[10px] text-slate-500 font-bold tracking-[0.2em] uppercase mt-1 italic">지점을 선택해주세요</p>
+            
             <div id="timer-box" class="mt-5 p-4 rounded-3xl bg-slate-900/50 border border-slate-800 flex items-center justify-between shadow-inner">
                 <div class="flex items-center gap-2">
                     <i data-lucide="timer" class="w-4 h-4 text-red-500"></i>
@@ -44,13 +57,18 @@
             </div>
         </header>
 
+        <!-- 네비게이션 -->
         <nav id="customer-nav" class="flex border-b border-slate-800 bg-slate-900/30 sticky top-[152px] z-40 backdrop-blur-md">
             <button onclick="switchTab('shop')" id="tab-shop" class="flex-1 py-4 text-xs font-bold uppercase tracking-widest tab-active">상품 목록</button>
             <button onclick="switchTab('lookup')" id="tab-lookup" class="flex-1 py-4 text-xs font-bold uppercase tracking-widest text-slate-500">내 주문 확인</button>
         </nav>
 
-        <main id="content-area" class="px-4 py-6"></main>
+        <!-- 메인 콘텐츠 영역 -->
+        <main id="content-area" class="px-4 py-6">
+            <!-- Dynamic Content -->
+        </main>
 
+        <!-- 주문 모달 -->
         <div id="order-modal" class="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-end justify-center hidden p-0">
             <div class="w-full bg-slate-900 rounded-t-[40px] p-8 space-y-6 shadow-2xl border-t border-slate-800 animate-fade-in max-h-[95vh] overflow-y-auto no-scrollbar">
                 <div class="flex justify-between items-center">
@@ -61,6 +79,7 @@
             </div>
         </div>
 
+        <!-- 관리자 로그인 모달 -->
         <div id="admin-login-modal" class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center hidden p-6">
             <div class="w-full max-w-xs space-y-6 text-center">
                 <div class="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto"><i data-lucide="lock" class="w-10 h-10"></i></div>
@@ -73,6 +92,7 @@
             </div>
         </div>
 
+        <!-- 장바구니 바 -->
         <div id="cart-bar" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] hidden w-auto min-w-[200px]">
             <button onclick="openOrderModal()" class="w-full py-3.5 btn-primary rounded-full flex items-center justify-center gap-4 px-10 shadow-2xl shadow-red-900/40 border border-red-400/30">
                 <div class="flex items-center gap-2">
@@ -83,6 +103,7 @@
             </button>
         </div>
 
+        <!-- 알림 -->
         <div id="notification" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[300] hidden">
             <div class="bg-red-600 text-white px-8 py-4 rounded-full font-black shadow-2xl flex items-center gap-3 border-2 border-red-400">
                 <i data-lucide="bell" class="w-4 h-4"></i>
@@ -93,18 +114,28 @@
 
     <script>
         let state = {
-            view: 'customer', tab: 'shop', currentMarketId: 'main-base',
+            view: 'customer',
+            tab: 'shop',
+            currentMarketId: 'main-base',
             warehouses: [{ id: 'main-base', name: '메인 베이스 (설정 필요)', sheetUrl: '' }], 
-            products: [], orders: [], cart: [], adminKey: '1234',
+            products: [],
+            orders: [],
+            cart: [],
+            adminKey: '1234',
             liveSessions: {}, 
-            accountInfo: { bank: '카카오뱅크', num: '', holder: '김경주' },
+            accountInfo: { bank: '', num: '', holder: '김경주' },
             searchTerm: ''
         };
 
-        function saveLocalData() { localStorage.setItem('gogojin_live_v20', JSON.stringify(state)); }
+        function saveLocalData() {
+            localStorage.setItem('gogojin_live_v20', JSON.stringify(state));
+        }
+
         function loadLocalData() {
             const saved = localStorage.getItem('gogojin_live_v20');
-            if (saved) state = { ...state, ...JSON.parse(saved) };
+            if (saved) {
+                state = { ...state, ...JSON.parse(saved) };
+            }
             state.adminKey = '1234'; 
         }
 
@@ -116,45 +147,42 @@
         }
 
         async function syncData() {
-            if (state.currentMarketId === 'main-base') { state.products = []; render(); return; }
+            if (state.currentMarketId === 'main-base') {
+                state.products = [];
+                render();
+                return;
+            }
             const currentW = state.warehouses.find(w => w.id === state.currentMarketId);
             if (!currentW || !currentW.sheetUrl) return;
             try {
                 const response = await fetch(currentW.sheetUrl);
                 const data = await response.json();
-                
-                // 구글 시트에서 최신 제품 및 라이브 정보 동기화
                 if (data.products) state.products = data.products;
                 else if (Array.isArray(data)) state.products = data;
-                
-                // 서버에서 전송된 라이브 상태가 있다면 동기화 (새로고침 없이 실시간 반영의 핵심)
-                if (data.liveSession) {
-                    state.liveSessions[state.currentMarketId] = data.liveSession;
-                }
-                
                 render();
             } catch (err) { console.error("동기화 실패", err); }
         }
 
         function startTimerLoop() {
-            // 1초마다 타이머 계산
             setInterval(() => {
                 if (!state.currentMarketId) return;
                 const session = state.liveSessions[state.currentMarketId];
-                const timerDisp = document.getElementById('timer-display');
                 if (session && session.isLive && session.startTime) {
                     const remaining = Math.max(0, session.duration - (Date.now() - session.startTime));
-                    if (timerDisp) timerDisp.innerText = formatTime(remaining);
-                    if (remaining === 0) { session.isLive = false; render(); }
+                    document.getElementById('timer-display').innerText = formatTime(remaining);
+                    if (remaining === 0) {
+                        session.isLive = false;
+                        render();
+                    }
                 } else {
-                    if (timerDisp) timerDisp.innerText = "00:00:00";
+                    document.getElementById('timer-display').innerText = "00:00:00";
                 }
             }, 1000);
-
-            // 20초마다 구글 시트 자동 동기화 (새로고침 방지)
+            
+            // 20초 주기 자동 동기화
             setInterval(() => {
-                if (state.currentMarketId !== 'main-base') syncData();
-            }, 20000); 
+                if(state.currentMarketId !== 'main-base') syncData();
+            }, 20000);
         }
 
         function formatTime(ms) {
@@ -171,28 +199,199 @@
             render();
         }
 
-        function showAdminLogin() { document.getElementById('admin-login-modal').classList.remove('hidden'); document.getElementById('admin-pw-input').focus(); }
-        function hideAdminLogin() { document.getElementById('admin-login-modal').classList.add('hidden'); document.getElementById('admin-pw-input').value = ''; }
-        function verifyAdmin() { if (document.getElementById('admin-pw-input').value.trim() === state.adminKey) { state.view = 'admin'; hideAdminLogin(); window.scrollTo(0,0); render(); } else showNotif("인증 실패"); }
+        function showAdminLogin() {
+            document.getElementById('admin-login-modal').classList.remove('hidden');
+            document.getElementById('admin-pw-input').focus();
+        }
+
+        function hideAdminLogin() {
+            document.getElementById('admin-login-modal').classList.add('hidden');
+            document.getElementById('admin-pw-input').value = '';
+        }
+
+        function verifyAdmin() {
+            const val = document.getElementById('admin-pw-input').value.trim();
+            if (val === state.adminKey) {
+                state.view = 'admin';
+                hideAdminLogin();
+                window.scrollTo(0,0);
+                render();
+            } else {
+                showNotif("인증 실패");
+            }
+        }
 
         function updateTempQty(name, delta, max) {
             const el = document.getElementById(`temp-qty-${name}`);
             let val = parseInt(el.innerText) + delta;
-            if (val < 1) val = 1; if (max && val > max) val = max;
+            if (val < 1) val = 1;
+            if (max && val > max) val = max;
             el.innerText = val;
         }
 
         function addToCart(name, price, stock) {
             const session = state.liveSessions[state.currentMarketId];
             if (!session || !session.isLive) return showNotif("현재 방송 중이 아닙니다.");
+            
             const qty = parseInt(document.getElementById(`temp-qty-${name}`).innerText);
             const existing = state.cart.find(i => i.name === name);
-            if (existing) existing.qty += qty; else state.cart.push({ name, price, qty });
+            if (existing) {
+                existing.qty += qty;
+            } else {
+                state.cart.push({ name, price, qty });
+            }
             showNotif(`${name} 추가 완료!`);
             render();
         }
 
-        function closeOrderModal() { document.getElementById('order-modal').classList.add('hidden'); }
+        function render() {
+            const area = document.getElementById('content-area');
+            const warehouseDisp = document.getElementById('current-warehouse-display');
+            const liveIndicator = document.getElementById('live-indicator');
+            const timerDisp = document.getElementById('timer-display');
+            const cartBar = document.getElementById('cart-bar');
+
+            const currentW = state.warehouses.find(w => w.id === state.currentMarketId);
+            warehouseDisp.innerText = currentW ? currentW.name : "지점을 선택하세요";
+
+            const session = state.liveSessions[state.currentMarketId];
+            if (session && session.isLive) {
+                liveIndicator.innerText = "방송 중";
+                liveIndicator.className = "text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full font-black uppercase";
+                timerDisp.classList.add('text-red-500');
+            } else {
+                liveIndicator.innerText = "대기 중";
+                liveIndicator.className = "text-[10px] bg-slate-600 text-white px-2 py-0.5 rounded-full font-black tracking-tighter uppercase";
+                timerDisp.classList.remove('text-red-500');
+            }
+
+            if (state.view === 'customer') {
+                area.innerHTML = state.tab === 'shop' ? renderShop() : renderLookup();
+                if (state.cart.length > 0 && state.tab === 'shop') cartBar.classList.remove('hidden');
+                else cartBar.classList.add('hidden');
+            } else {
+                area.innerHTML = renderAdmin();
+            }
+            lucide.createIcons();
+        }
+
+        function renderShop() {
+            if (state.currentMarketId === 'main-base') return `<div class="py-24 text-center text-slate-500 font-bold uppercase animate-fade-in"><i data-lucide="info" class="w-12 h-12 mx-auto mb-4 opacity-20"></i>지점을 등록해주세요</div>`;
+            
+            return `
+                <div class="mb-6 animate-fade-in">
+                    <div class="flex items-center bg-white rounded-2xl px-4 py-3.5 border-2 border-red-500/20 focus-within:border-red-500 shadow-xl">
+                        <i data-lucide="search" class="w-5 h-5 text-slate-400 mr-3"></i>
+                        <input oninput="state.searchTerm = this.value; const items = document.getElementById('product-list-container'); if(items) items.innerHTML = renderProductItems();" 
+                               placeholder="상품명으로 검색..." 
+                               class="bg-transparent border-none outline-none w-full text-lg font-bold text-black placeholder-slate-400" />
+                    </div>
+                </div>
+                <div id="product-list-container" class="space-y-6">
+                    ${renderProductItems()}
+                </div>
+            `;
+        }
+
+        function renderProductItems() {
+            const filtered = state.products.filter(p => (p.상품명 || p.name || "").toLowerCase().includes(state.searchTerm.toLowerCase()));
+            if (filtered.length === 0) return `<p class="text-center py-20 text-slate-600 font-bold">검색 결과가 없습니다.</p>`;
+
+            return filtered.map(p => `
+                <div class="gogojin-card animate-fade-in">
+                    <div class="relative aspect-[4/5] bg-slate-800">
+                        <img src="https://gogojin-kkj.github.io/-/images/${p.상품명 || p.name}.jpg" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/600x800/1e293b/ef4444?text=${encodeURIComponent(p.상품명 || p.name)}';">
+                        <div class="absolute inset-0 image-overlay flex flex-col justify-end p-6">
+                            <span class="text-[9px] text-red-400 font-black uppercase">${p.카테고리 || '-'}</span>
+                            <h3 class="text-2xl font-black text-white">${p.상품명 || p.name}</h3>
+                        </div>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div class="flex justify-between items-center">
+                            <p class="text-2xl font-black text-red-500">${Number(p.가격 || 0).toLocaleString()}원</p>
+                            <div class="flex items-center gap-2">
+                                <button onclick="updateTempQty('${p.상품명 || p.name}', -1)" class="qty-btn">-</button>
+                                <span id="temp-qty-${p.상품명 || p.name}" class="text-base font-black w-4 text-center">1</span>
+                                <button onclick="updateTempQty('${p.상품명 || p.name}', 1)" class="qty-btn">+</button>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/50 p-3 rounded-xl text-[11px] font-bold text-slate-400 leading-relaxed">
+                            상세: ${p.색상 || '-'} / ${p.사이즈 || '-'} / 총장:${p.총장 || '-'} / 가단:${p.가단 || '-'}
+                        </div>
+                        <button onclick="addToCart('${p.상품명 || p.name}', ${p.가격 || 0}, ${p.재고 || 0})" class="w-full py-4 btn-primary rounded-2xl text-xs font-black uppercase">담기</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderAdmin() {
+            const session = state.liveSessions[state.currentMarketId] || { isLive: false };
+            return `
+            <div class="space-y-8 animate-fade-in pb-24 text-white">
+                <div class="flex flex-col gap-4 border-b border-slate-800 pb-5">
+                    <h2 class="text-2xl font-black text-red-500 italic uppercase">관리자 센터</h2>
+                    <button onclick="state.view='customer'; render();" class="w-full py-6 btn-go-broadcast rounded-[2rem] text-xl font-black flex items-center justify-center gap-3">
+                        <i data-lucide="layout-template"></i> 방송 화면으로 이동
+                    </button>
+                </div>
+                
+                <div class="bg-slate-900 p-8 rounded-[40px] border border-slate-800 space-y-6 shadow-2xl">
+                    <h3 class="text-lg font-black uppercase text-pink-500 flex items-center gap-2 border-b border-slate-800 pb-3"><i data-lucide="clipboard-list" class="w-6 h-6"></i> 실시간 주문 모니터링</h3>
+                    <div class="space-y-4 max-h-[500px] overflow-y-auto no-scrollbar">
+                        ${state.orders.length === 0 ? '<p class="text-center py-20 text-slate-600 font-bold">주문 데이터가 없습니다.</p>' : 
+                        state.orders.map(o => `
+                            <div class="bg-slate-800 p-5 rounded-3xl border border-slate-700 space-y-3 shadow-lg animate-fade-in">
+                                <div class="flex justify-between items-start">
+                                    <div><p class="text-[10px] text-slate-400 font-bold uppercase mb-1">주문자</p><p class="text-xl font-black text-white">${o.tiktokId}(${o.name})</p></div>
+                                    <div class="text-right"><p class="text-[10px] text-slate-400 font-bold uppercase mb-1">금액</p><p class="text-xl font-black text-red-500">${Number(o.totalAmount).toLocaleString()}원</p></div>
+                                </div>
+                                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700"><p class="text-[9px] text-slate-500 font-bold mb-1 uppercase">품목</p><p class="text-sm text-slate-200 font-black">${o.items.join(', ')}</p></div>
+                                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700"><p class="text-[9px] text-slate-500 font-bold mb-1 uppercase">배송 주소</p><p class="text-[11px] text-slate-400 leading-tight">${o.address}</p></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 p-7 rounded-[32px] border border-slate-800 space-y-4 shadow-2xl">
+                    <h3 class="text-sm font-black uppercase text-slate-400 flex items-center gap-2"><i data-lucide="warehouse"></i> 지점 관리 (슬림)</h3>
+                    <div class="space-y-2">
+                        ${state.warehouses.map(w => `
+                            <div class="flex justify-between items-center p-4 rounded-2xl border ${w.id === state.currentMarketId ? 'warehouse-active' : 'bg-slate-800 border-slate-700'}">
+                                <div onclick="state.currentMarketId='${w.id}'; syncData(); render();" class="flex-1 cursor-pointer"><p class="font-black text-white">${w.name}</p></div>
+                                <div class="flex items-center gap-2">
+                                    ${w.id !== 'main-base' ? `<button onclick="state.warehouses = state.warehouses.filter(wh=>wh.id!=='${w.id}'); if(state.currentMarketId==='${w.id}') state.currentMarketId='main-base'; saveLocalData(); render();" class="text-slate-500 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="pt-5 border-t border-slate-800 space-y-4">
+                        <input id="new-w-name" placeholder="지점 이름" class="w-full py-4.5 px-6 rounded-2xl bg-slate-800 outline-none text-base font-bold border border-slate-700" />
+                        <input id="new-w-url" placeholder="GAS 웹앱 URL" class="w-full py-4.5 px-6 rounded-2xl bg-slate-800 outline-none text-[10px] font-bold border border-slate-700" />
+                        <button onclick="const n=document.getElementById('new-w-name').value; const u=document.getElementById('new-w-url').value; if(n&&u){ state.warehouses.push({id:'w-'+Date.now(), name:n, sheetUrl:u}); saveLocalData(); render(); showNotif('등록 성공'); }" class="w-full py-4.5 bg-blue-600 rounded-2xl font-black text-sm">지점 등록 및 연동</button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 p-7 rounded-[32px] border border-slate-800 space-y-4 shadow-2xl">
+                    <h3 class="text-sm font-black uppercase text-slate-400 flex items-center gap-2 tracking-widest"><i data-lucide="credit-card"></i> 계좌 설정</h3>
+                    <input id="bank-input" value="${state.accountInfo.bank}" placeholder="은행명" class="w-full py-4.5 px-6 rounded-2xl bg-slate-800 border border-slate-700 text-white font-bold" />
+                    <input id="account-num-input" value="${state.accountInfo.num}" placeholder="계좌번호" class="w-full py-4.5 px-6 rounded-2xl bg-slate-800 border border-slate-700 text-white font-bold" />
+                    <input id="holder-input" value="${state.accountInfo.holder}" placeholder="예금주" class="w-full py-4.5 px-6 rounded-2xl bg-slate-800 border border-slate-700 text-white font-bold" />
+                    <button onclick="state.accountInfo = {bank:document.getElementById('bank-input').value, num:document.getElementById('account-num-input').value, holder:document.getElementById('holder-input').value}; saveLocalData(); showNotif('저장 완료');" class="w-full py-4.5 bg-green-600 rounded-2xl font-black text-sm">계좌 정보 저장</button>
+                </div>
+
+                <div class="bg-slate-900 p-7 rounded-[32px] border border-slate-800 text-center shadow-xl space-y-6">
+                    <p class="text-[10px] text-slate-500 font-black uppercase">방송 시간 설정 (0~10)</p>
+                    <div class="flex items-center gap-4 justify-center">
+                        <input type="number" id="live-hours" min="1" max="10" value="4" class="w-24 p-3 bg-slate-800 text-center font-black text-2xl text-white rounded-2xl border-none" />
+                        <span class="text-lg font-bold text-slate-500 uppercase">Hours</span>
+                    </div>
+                    <button onclick="if(!state.liveSessions[state.currentMarketId]) state.liveSessions[state.currentMarketId] = {isLive:false, startTime:null, duration:4*3600000}; const s=state.liveSessions[state.currentMarketId]; s.isLive=!s.isLive; if(s.isLive){ s.startTime=Date.now(); s.duration=document.getElementById('live-hours').value*3600000; } else s.startTime=null; saveLocalData(); render();" class="w-full py-4.5 rounded-2xl font-black text-sm ${session.isLive ? 'bg-red-600' : 'bg-green-600'} text-white shadow-lg">
+                        ${session.isLive ? '방송 종료' : '방송 시작'}
+                    </button>
+                </div>
+            </div>
+            `;
+        }
 
         function openOrderModal() {
             document.getElementById('order-modal').classList.remove('hidden');
@@ -200,7 +399,7 @@
             content.innerHTML = `
                 <div class="space-y-4 max-h-[30vh] overflow-y-auto no-scrollbar py-2">
                     ${state.cart.map((i, idx) => `
-                        <div class="flex justify-between items-center bg-slate-800/50 p-5 rounded-3xl border border-slate-800">
+                        <div class="flex justify-between items-center bg-slate-800/50 p-5 rounded-3xl border border-slate-800 shadow-xl">
                             <div><p class="font-black text-white text-lg">${i.name}</p></div>
                             <div class="flex items-center gap-6">
                                 <div class="text-right"><p class="text-[10px] text-slate-500 font-bold uppercase">수량</p><p class="text-3xl font-black text-white">x ${i.qty}</p></div>
@@ -209,10 +408,10 @@
                             </div>
                         </div>`).join('')}
                 </div>
-                <div class="flex justify-between items-end border-t border-slate-800 pt-6 pb-2"><span class="text-slate-400 font-black uppercase text-xs">최종 금액</span><span class="text-5xl font-black text-red-500">${state.cart.reduce((s,i)=>s+(i.price*i.qty),0).toLocaleString()}원</span></div>
-                <input id="order-tiktok" placeholder="틱톡 아이디" class="w-full p-5 rounded-2xl input-highlight text-lg" />
-                <input id="order-name" placeholder="입금자 성함 (실명)" class="w-full p-5 rounded-2xl input-highlight border-2 border-red-500/30 text-lg" />
-                <textarea id="order-address" placeholder="받으실 주소" class="w-full p-4 rounded-2xl input-highlight text-lg h-24"></textarea>
+                <div class="flex justify-between items-end border-t border-slate-800 pt-6 pb-2"><span class="text-slate-400 font-black uppercase text-xs">최종 합계</span><span class="text-5xl font-black text-red-500">${state.cart.reduce((s,i)=>s+(i.price*i.qty),0).toLocaleString()}원</span></div>
+                <input id="order-tiktok" placeholder="틱톡 아이디" class="w-full p-5 rounded-2xl input-highlight text-lg shadow-2xl" />
+                <input id="order-name" placeholder="입금자 성함 (실명)" class="w-full p-5 rounded-2xl input-highlight border-2 border-red-500/30 text-lg shadow-2xl" />
+                <textarea id="order-address" placeholder="받으실 주소" class="w-full p-4 rounded-2xl input-highlight text-lg h-24 shadow-2xl"></textarea>
                 <button onclick="handleFinalOrder()" class="w-full py-5 btn-primary rounded-3xl text-sm font-black uppercase tracking-widest shadow-2xl">주문 완료 및 입금 안내</button>
             `;
             lucide.createIcons();
@@ -239,7 +438,7 @@
             content.innerHTML = `
                 <div class="text-center space-y-8 py-6">
                     <div class="w-20 h-20 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-2"><i data-lucide="check-circle" class="w-12 h-12"></i></div>
-                    <div><h2 class="text-3xl font-black text-white italic">주문 성공!</h2><p class="text-slate-500 text-sm mt-2 font-bold">방송 종료 전까지 아래 계좌로 입금해주세요.</p></div>
+                    <div><h2 class="text-3xl font-black text-white italic">주문 성공!</h2><p class="text-slate-500 text-sm mt-2 font-bold">입금 확인 후 배송이 시작됩니다.</p></div>
                     <div class="bank-box p-8 space-y-4 shadow-2xl border border-blue-400/30">
                         <p class="text-2xl font-black text-white">${state.accountInfo.bank} ${state.accountInfo.num}</p>
                         <p class="text-base font-bold text-white/80">예금주: ${state.accountInfo.holder}</p>
@@ -249,7 +448,7 @@
                         <p class="text-red-500 font-black italic"><i data-lucide="alert-triangle" class="w-5 h-5 inline"></i> 입금 미확인 시 배송 불가</p>
                         <p class="text-slate-500 text-[11px] mt-2 font-bold leading-relaxed">반드시 주문 시 성함으로 송금해주세요.</p>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-2 gap-3">
                         <button onclick="closeOrderModal(); switchTab('lookup');" class="py-5 btn-primary rounded-3xl text-sm font-black uppercase">조회하기</button>
                         <button onclick="closeOrderModal(); switchTab('shop');" class="py-5 bg-slate-800 text-slate-400 rounded-3xl text-sm font-black uppercase">쇼핑 계속하기</button>
                     </div>
@@ -259,97 +458,13 @@
 
         function copyText(t) { const el = document.createElement('textarea'); el.value = t; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); showNotif("복사 완료!"); }
 
-        // --- Rendering Sub-components ---
-        function render() {
-            const area = document.getElementById('content-area');
-            const warehouseDisp = document.getElementById('current-warehouse-display');
-            const liveIndicator = document.getElementById('live-indicator');
-            const timerDisp = document.getElementById('timer-display');
-            const cartBar = document.getElementById('cart-bar');
-
-            const currentW = state.warehouses.find(w => w.id === state.currentMarketId);
-            warehouseDisp.innerText = currentW ? currentW.name : "지점을 선택하세요";
-
-            const session = state.liveSessions[state.currentMarketId];
-            if (session && session.isLive) {
-                liveIndicator.innerText = "방송 중"; liveIndicator.className = "text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full font-black uppercase";
-                timerDisp.classList.add('text-red-500');
-            } else {
-                liveIndicator.innerText = "대기 중"; liveIndicator.className = "text-[10px] bg-slate-600 text-white px-2 py-0.5 rounded-full font-black uppercase";
-                timerDisp.classList.remove('text-red-500');
-            }
-
-            if (state.view === 'customer') {
-                area.innerHTML = state.tab === 'shop' ? renderShop() : renderLookup();
-                if (state.cart.length > 0 && state.tab === 'shop') cartBar.classList.remove('hidden'); else cartBar.classList.add('hidden');
-            } else area.innerHTML = renderAdmin();
-            lucide.createIcons();
-        }
-
-        function renderShop() {
-            if (state.currentMarketId === 'main-base') return `<div class="py-24 text-center text-slate-500 font-bold uppercase animate-fade-in"><i data-lucide="info" class="w-12 h-12 mx-auto mb-4 opacity-20"></i>지점을 등록해주세요</div>`;
-            const filtered = state.products.filter(p => (p.상품명 || p.name || "").toLowerCase().includes(state.searchTerm.toLowerCase()));
-            return `<div class="space-y-6">${filtered.map(p => `
-                <div class="gogojin-card animate-fade-in">
-                    <div class="relative aspect-[4/5] bg-slate-800">
-                        <img src="https://gogojin-kkj.github.io/-/images/${p.상품명 || p.name}.jpg" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/600x800/1e293b/ef4444?text=${encodeURIComponent(p.상품명 || p.name)}';">
-                        <div class="absolute inset-0 image-overlay flex flex-col justify-end p-6">
-                            <span class="text-[9px] text-red-400 font-black uppercase">${p.카테고리 || '-'}</span>
-                            <h3 class="text-2xl font-black text-white">${p.상품명 || p.name}</h3>
-                        </div>
-                    </div>
-                    <div class="p-6 space-y-4">
-                        <div class="flex justify-between items-center"><p class="text-2xl font-black text-red-500">${Number(p.가격 || 0).toLocaleString()}원</p>
-                            <div class="flex items-center gap-2"><button onclick="updateTempQty('${p.상품명 || p.name}', -1)" class="qty-btn">-</button><span id="temp-qty-${p.상품명 || p.name}" class="text-base font-black w-4 text-center">1</span><button onclick="updateTempQty('${p.상품명 || p.name}', 1)" class="qty-btn">+</button></div>
-                        </div>
-                        <div class="bg-slate-900/50 p-3 rounded-xl text-[11px] font-bold text-slate-400 leading-relaxed">
-                            상세: ${p.색상 || '-'} / ${p.사이즈 || '-'} / 총장:${p.총장 || '-'} / 가단:${p.가단 || '-'}
-                        </div>
-                        <button onclick="addToCart('${p.상품명 || p.name}', ${p.가격 || 0}, ${p.재고 || 0})" class="w-full py-4 btn-primary rounded-2xl text-xs font-black uppercase">담기</button>
-                    </div>
-                </div>`).join('')}</div>`;
-        }
-
-        function renderAdmin() {
-            const session = state.liveSessions[state.currentMarketId] || { isLive: false };
-            return `
-            <div class="space-y-8 animate-fade-in pb-24 text-white">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-5"><h2 class="text-2xl font-black text-red-500 italic uppercase">관리자 센터</h2><button onclick="state.view='customer'; render();" class="text-xs font-bold text-slate-400 border border-slate-800 px-5 py-2.5 rounded-2xl">방송 화면 가기</button></div>
-                <div class="bg-slate-900 p-7 rounded-[32px] border border-slate-800 space-y-4 shadow-2xl">
-                    <h3 class="text-sm font-black uppercase text-slate-400 flex items-center gap-2"><i data-lucide="warehouse"></i> 지점 설정</h3>
-                    ${state.warehouses.map(w => `
-                        <div class="flex justify-between items-center p-4 rounded-2xl border ${w.id === state.currentMarketId ? 'warehouse-active' : 'bg-slate-800 border-slate-700'}">
-                            <div onclick="state.currentMarketId='${w.id}'; syncData(); render();" class="flex-1 cursor-pointer"><p class="font-black text-white">${w.name}</p></div>
-                            <div class="flex items-center gap-2">${w.id !== 'main-base' ? `<button onclick="state.warehouses = state.warehouses.filter(wh=>wh.id!=='${w.id}'); if(state.currentMarketId==='${w.id}') state.currentMarketId='main-base'; saveLocalData(); render();" class="text-slate-500 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}<button class="px-4 py-2 rounded-xl text-[10px] font-black ${w.id === state.currentMarketId ? 'bg-white text-red-600' : 'bg-slate-700 text-slate-400'}">${w.id === state.currentMarketId ? '현재지점' : '선택'}</button></div>
-                        </div>`).join('')}
-                    <div class="pt-5 border-t border-slate-800 space-y-6">
-                        <input id="new-w-name" placeholder="지점 이름" class="w-full py-9 px-6 rounded-2xl bg-slate-800 outline-none text-lg font-bold border border-slate-700" />
-                        <input id="new-w-url" placeholder="GAS 웹앱 URL" class="w-full py-9 px-6 rounded-2xl bg-slate-800 outline-none text-[10px] font-bold border border-slate-700" />
-                        <button onclick="const n=document.getElementById('new-w-name').value; const u=document.getElementById('new-w-url').value; if(n&&u){ state.warehouses.push({id:'w-'+Date.now(), name:n, sheetUrl:u}); saveLocalData(); render(); showNotif('등록 성공'); }" class="w-full py-9 bg-blue-600 rounded-3xl font-black text-xl shadow-xl">신규 지점 등록 및 연동</button>
-                    </div>
-                </div>
-                <div class="bg-slate-900 p-7 rounded-[32px] border border-slate-800 space-y-4 shadow-2xl">
-                    <h3 class="text-sm font-black uppercase text-slate-400 flex items-center gap-2 tracking-widest"><i data-lucide="credit-card"></i> 입금 계좌 수동 설정</h3>
-                    <input id="bank-input" value="${state.accountInfo.bank}" class="w-full py-9 px-6 rounded-2xl bg-slate-800 border border-slate-700 text-white font-bold" />
-                    <input id="account-num-input" value="${state.accountInfo.num}" class="w-full py-9 px-6 rounded-2xl bg-slate-800 border border-slate-700 text-white font-bold" />
-                    <input id="holder-input" value="${state.accountInfo.holder}" class="w-full py-9 px-6 rounded-2xl bg-slate-800 border border-slate-700 text-white font-bold" />
-                    <button onclick="state.accountInfo = {bank:document.getElementById('bank-input').value, num:document.getElementById('account-num-input').value, holder:document.getElementById('holder-input').value}; saveLocalData(); showNotif('저장 완료');" class="w-full py-9 bg-green-600 rounded-3xl font-black text-xl">계좌 정보 저장</button>
-                </div>
-                <div class="bg-slate-900 p-7 rounded-[32px] border border-slate-800 text-center shadow-xl space-y-6">
-                    <p class="text-[10px] text-slate-500 font-black uppercase">방송 타이머 설정</p>
-                    <input type="number" id="live-hours" min="1" max="10" value="4" class="w-full p-4 bg-slate-800 text-center font-black text-4xl text-white rounded-3xl border-none" />
-                    <button onclick="if(!state.liveSessions[state.currentMarketId]) state.liveSessions[state.currentMarketId] = {isLive:false, startTime:null, duration:4*3600000}; const s=state.liveSessions[state.currentMarketId]; s.isLive=!s.isLive; if(s.isLive){ s.startTime=Date.now(); s.duration=document.getElementById('live-hours').value*3600000; } else s.startTime=null; saveLocalData(); render();" class="w-full py-9 rounded-[2.5rem] font-black text-2xl ${session.isLive ? 'bg-red-600' : 'bg-green-600'} text-white uppercase shadow-2xl">
-                        ${session.isLive ? '방송 종료' : '방송 시작'}
-                    </button>
-                </div>
-            </div>`;
-        }
-
         function renderLookup() {
-            return `<div class="bg-slate-900 p-8 rounded-[40px] border border-slate-800 space-y-5 text-center shadow-2xl"><h3 class="text-xl font-black text-white italic uppercase tracking-tighter">주문 내역 조회</h3><input id="lookup-name" placeholder="입금자 성함 입력" class="w-full p-5 rounded-2xl text-center font-black text-lg bg-slate-800 text-white outline-none border border-slate-700" /><button onclick="const n=document.getElementById('lookup-name').value.trim(); const res=state.orders.filter(o=>o.name===n); const c=document.getElementById('lookup-results'); if(res.length==0) c.innerHTML='<div class=py-16>내역 없음</div>'; else c.innerHTML=res.map(o=>'<div class=\\'gogojin-card p-6 border-l-8 border-l-red-500 animate-fade-in\\'><div class=\\'flex justify-between items-start mb-4\\'><span class=\\'text-[10px] font-black text-slate-500 uppercase tracking-widest\\'>입금 확인 중</span><span class=\\'text-3xl font-black text-red-500 tracking-tighter\\'>'+Number(o.totalAmount).toLocaleString()+'원</span></div><div class=\\'text-sm font-bold text-slate-300 mb-5 leading-relaxed bg-slate-900/50 p-3 rounded-xl\\'>• '+o.items.join('<br>• ')+'</div><div class=\\'bg-slate-900 p-5 rounded-3xl space-y-3 border border-slate-800 shadow-inner\\'><p class=\\'text-[10px] text-slate-500 uppercase font-black tracking-widest\\'>입금 안내</p><p class=\\'text-base font-black text-white tracking-tight\\'>'+state.accountInfo.bank+' '+state.accountInfo.num+'</p><p class=\\'text-[10px] text-slate-400 font-bold\\'>예금주: '+state.accountInfo.holder+'</p></div></div>').join('');" class="w-full p-5 btn-primary rounded-2xl font-black uppercase tracking-widest shadow-xl">내역 확인하기</button></div><div id="lookup-results" class="space-y-4 mt-6"></div>`;
+            return `
+            <div class="bg-slate-900 p-8 rounded-[40px] border border-slate-800 space-y-5 text-center shadow-2xl shadow-black/40"><h3 class="text-xl font-black text-white italic uppercase tracking-tighter">주문 내역 조회</h3><input id="lookup-name" placeholder="입금자 성함 입력" class="w-full p-5 rounded-2xl text-center font-black text-lg bg-slate-800 text-white outline-none border border-slate-700 shadow-inner" /><button onclick="const n=document.getElementById('lookup-name').value.trim(); const res=state.orders.filter(o=>o.name===n); const c=document.getElementById('lookup-results'); if(res.length==0) c.innerHTML='<div class=py-16>내역 없음</div>'; else c.innerHTML=res.map(o=>'<div class=\\'gogojin-card p-6 border-l-8 border-l-red-500 animate-fade-in\\'><div class=\\'flex justify-between items-start mb-4\\'><span class=\\'text-[10px] font-black text-slate-500 uppercase tracking-widest\\'>입금 확인 중</span><span class=\\'text-3xl font-black text-red-500 tracking-tighter\\'>'+Number(o.totalAmount).toLocaleString()+'원</span></div><div class=\\'text-sm font-bold text-slate-300 mb-5 leading-relaxed bg-slate-900/50 p-3 rounded-xl\\'>• '+o.items.join('<br>• ')+'</div><div class=\\'bg-slate-900 p-5 rounded-3xl space-y-3 border border-slate-800 shadow-inner\\'><p class=\\'text-[10px] text-slate-500 uppercase font-black tracking-widest\\'>입금 안내</p><p class=\\'text-base font-black text-white tracking-tight\\'>'+state.accountInfo.bank+' '+state.accountInfo.num+'</p><p class=\\'text-[10px] text-slate-400 font-bold\\'>예금주: '+state.accountInfo.holder+'</p></div></div>').join('');" class="w-full p-5 btn-primary rounded-2xl font-black uppercase tracking-widest shadow-xl">내역 확인하기</button></div><div id="lookup-results" class="space-y-4 mt-6"></div>`;
         }
 
-        // --- App Entry Point ---
+        function closeOrderModal() { document.getElementById('order-modal').classList.add('hidden'); }
+
         function init() {
             loadLocalData();
             startTimerLoop();
