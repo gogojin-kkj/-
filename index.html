@@ -105,7 +105,7 @@
 
         <!-- 알림 -->
         <div id="notification" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[300] hidden">
-            <div class="bg-red-600 text-white px-8 py-4 rounded-full font-black shadow-2xl flex items-center gap-3 border-2 border-red-400">
+            <div id="notif-box" class="bg-red-600 text-white px-8 py-4 rounded-full font-black shadow-2xl flex items-center gap-3 border-2 border-red-400">
                 <i data-lucide="bell" class="w-4 h-4"></i>
                 <span id="notif-msg" class="text-sm">알림</span>
             </div>
@@ -128,39 +128,69 @@
         };
 
         function saveLocalData() {
-            localStorage.setItem('gogojin_live_v20', JSON.stringify(state));
+            localStorage.setItem('gogojin_live_v21_fixed', JSON.stringify(state));
         }
 
         function loadLocalData() {
-            const saved = localStorage.getItem('gogojin_live_v20');
+            const saved = localStorage.getItem('gogojin_live_v21_fixed');
             if (saved) {
                 state = { ...state, ...JSON.parse(saved) };
             }
             state.adminKey = '1234'; 
         }
 
-        function showNotif(msg) {
+        function showNotif(msg, isError = false) {
             const n = document.getElementById('notification');
+            const box = document.getElementById('notif-box');
             document.getElementById('notif-msg').innerText = msg;
+            
+            if(isError) {
+                box.classList.replace('bg-red-600', 'bg-slate-800');
+                box.classList.replace('border-red-400', 'border-slate-600');
+            } else {
+                box.classList.replace('bg-slate-800', 'bg-red-600');
+                box.classList.replace('border-slate-600', 'border-red-400');
+            }
+
             n.classList.remove('hidden');
-            setTimeout(() => n.classList.add('hidden'), 3000);
+            setTimeout(() => n.classList.add('hidden'), 4000);
         }
 
         async function syncData() {
-            if (state.currentMarketId === 'main-base') {
+            // URL 유효성 검사 (ReferenceError 및 Failed to fetch 방지)
+            if (!state.currentMarketId || state.currentMarketId === 'main-base') {
                 state.products = [];
                 render();
                 return;
             }
+
             const currentW = state.warehouses.find(w => w.id === state.currentMarketId);
-            if (!currentW || !currentW.sheetUrl) return;
+            if (!currentW || !currentW.sheetUrl || !currentW.sheetUrl.startsWith('http')) {
+                return; // URL이 없으면 시도하지 않음
+            }
+
             try {
-                const response = await fetch(currentW.sheetUrl);
+                const controller = new AbortTimeout(5000); // 5초 타임아웃
+                const response = await fetch(currentW.sheetUrl, { signal: controller.signal });
+                
+                if (!response.ok) throw new Error("서버 응답 오류");
+                
                 const data = await response.json();
                 if (data.products) state.products = data.products;
                 else if (Array.isArray(data)) state.products = data;
+                
                 render();
-            } catch (err) { console.error("동기화 실패", err); }
+            } catch (err) {
+                console.error("동기화 실패", err);
+                showNotif("데이터 연결 실패: 구글 시트 배포 설정을 확인하세요.", true);
+            }
+        }
+
+        // 타임아웃 유틸리티
+        function AbortTimeout(ms) {
+            const controller = new AbortController();
+            setTimeout(() => controller.abort(), ms);
+            return controller;
         }
 
         function startTimerLoop() {
@@ -179,7 +209,7 @@
                 }
             }, 1000);
             
-            // 20초 주기 자동 동기화
+            // 20초 주기 자동 동기화 (URL이 있을 때만)
             setInterval(() => {
                 if(state.currentMarketId !== 'main-base') syncData();
             }, 20000);
@@ -217,12 +247,13 @@
                 window.scrollTo(0,0);
                 render();
             } else {
-                showNotif("인증 실패");
+                showNotif("인증 실패", true);
             }
         }
 
         function updateTempQty(name, delta, max) {
             const el = document.getElementById(`temp-qty-${name}`);
+            if(!el) return;
             let val = parseInt(el.innerText) + delta;
             if (val < 1) val = 1;
             if (max && val > max) val = max;
@@ -231,9 +262,10 @@
 
         function addToCart(name, price, stock) {
             const session = state.liveSessions[state.currentMarketId];
-            if (!session || !session.isLive) return showNotif("현재 방송 중이 아닙니다.");
+            if (!session || !session.isLive) return showNotif("현재 방송 중이 아닙니다.", true);
             
-            const qty = parseInt(document.getElementById(`temp-qty-${name}`).innerText);
+            const qtyEl = document.getElementById(`temp-qty-${name}`);
+            const qty = qtyEl ? parseInt(qtyEl.innerText) : 1;
             const existing = state.cart.find(i => i.name === name);
             if (existing) {
                 existing.qty += qty;
@@ -367,7 +399,7 @@
                     <div class="pt-5 border-t border-slate-800 space-y-4">
                         <input id="new-w-name" placeholder="지점 이름" class="w-full py-4.5 px-6 rounded-2xl bg-slate-800 outline-none text-base font-bold border border-slate-700" />
                         <input id="new-w-url" placeholder="GAS 웹앱 URL" class="w-full py-4.5 px-6 rounded-2xl bg-slate-800 outline-none text-[10px] font-bold border border-slate-700" />
-                        <button onclick="const n=document.getElementById('new-w-name').value; const u=document.getElementById('new-w-url').value; if(n&&u){ state.warehouses.push({id:'w-'+Date.now(), name:n, sheetUrl:u}); saveLocalData(); render(); showNotif('등록 성공'); }" class="w-full py-4.5 bg-blue-600 rounded-2xl font-black text-sm">지점 등록 및 연동</button>
+                        <button onclick="const n=document.getElementById('new-w-name').value; const u=document.getElementById('new-w-url').value; if(n&&u){ state.warehouses.push({id:'w-'+Date.now(), name:n, sheetUrl:u}); saveLocalData(); syncData(); render(); showNotif('등록 성공'); }" class="w-full py-4.5 bg-blue-600 rounded-2xl font-black text-sm">지점 등록 및 연동</button>
                     </div>
                 </div>
 
@@ -421,7 +453,7 @@
             const tid = document.getElementById('order-tiktok').value.trim();
             const name = document.getElementById('order-name').value.trim();
             const addr = document.getElementById('order-address').value.trim();
-            if (!tid || !name || !addr) return showNotif("모든 정보를 입력해주세요!");
+            if (!tid || !name || !addr) return showNotif("모든 정보를 입력해주세요!", true);
 
             const currentW = state.warehouses.find(w => w.id === state.currentMarketId);
             const order = { type: 'NEW_ORDER', name, tiktokId: tid, address: addr, items: state.cart.map(i=>`${i.name}(${i.qty})`), totalAmount: state.cart.reduce((s,i)=>s+(i.price*i.qty),0), warehouse: currentW.name };
@@ -460,20 +492,43 @@
 
         function renderLookup() {
             return `
-            <div class="bg-slate-900 p-8 rounded-[40px] border border-slate-800 space-y-5 text-center shadow-2xl shadow-black/40"><h3 class="text-xl font-black text-white italic uppercase tracking-tighter">주문 내역 조회</h3><input id="lookup-name" placeholder="입금자 성함 입력" class="w-full p-5 rounded-2xl text-center font-black text-lg bg-slate-800 text-white outline-none border border-slate-700 shadow-inner" /><button onclick="const n=document.getElementById('lookup-name').value.trim(); const res=state.orders.filter(o=>o.name===n); const c=document.getElementById('lookup-results'); if(res.length==0) c.innerHTML='<div class=py-16>내역 없음</div>'; else c.innerHTML=res.map(o=>'<div class=\\'gogojin-card p-6 border-l-8 border-l-red-500 animate-fade-in\\'><div class=\\'flex justify-between items-start mb-4\\'><span class=\\'text-[10px] font-black text-slate-500 uppercase tracking-widest\\'>입금 확인 중</span><span class=\\'text-3xl font-black text-red-500 tracking-tighter\\'>'+Number(o.totalAmount).toLocaleString()+'원</span></div><div class=\\'text-sm font-bold text-slate-300 mb-5 leading-relaxed bg-slate-900/50 p-3 rounded-xl\\'>• '+o.items.join('<br>• ')+'</div><div class=\\'bg-slate-900 p-5 rounded-3xl space-y-3 border border-slate-800 shadow-inner\\'><p class=\\'text-[10px] text-slate-500 uppercase font-black tracking-widest\\'>입금 안내</p><p class=\\'text-base font-black text-white tracking-tight\\'>'+state.accountInfo.bank+' '+state.accountInfo.num+'</p><p class=\\'text-[10px] text-slate-400 font-bold\\'>예금주: '+state.accountInfo.holder+'</p></div></div>').join('');" class="w-full p-5 btn-primary rounded-2xl font-black uppercase tracking-widest shadow-xl">내역 확인하기</button></div><div id="lookup-results" class="space-y-4 mt-6"></div>`;
+            <div class="bg-slate-900 p-8 rounded-[40px] border border-slate-800 space-y-5 text-center shadow-2xl shadow-black/40">
+                <h3 class="text-xl font-black text-white italic uppercase tracking-tighter">주문 내역 조회</h3>
+                <input id="lookup-name" placeholder="입금자 성함 입력" class="w-full p-5 rounded-2xl text-center font-black text-lg bg-slate-800 text-white outline-none border border-slate-700 shadow-inner" />
+                <button onclick="performLookup()" class="w-full p-5 btn-primary rounded-2xl font-black uppercase tracking-widest shadow-xl">내역 확인하기</button>
+            </div>
+            <div id="lookup-results" class="space-y-4 mt-6"></div>`;
+        }
+
+        function performLookup() {
+            const n = document.getElementById('lookup-name').value.trim();
+            const res = state.orders.filter(o => o.name === n);
+            const c = document.getElementById('lookup-results');
+            if (res.length == 0) c.innerHTML = '<div class="py-16 text-center text-slate-600 font-bold">내역 없음</div>';
+            else c.innerHTML = res.map(o => `
+                <div class="gogojin-card p-6 border-l-8 border-l-red-500 animate-fade-in">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">입금 확인 중</span>
+                        <span class="text-3xl font-black text-red-500 tracking-tighter">${Number(o.totalAmount).toLocaleString()}원</span>
+                    </div>
+                    <div class="text-sm font-bold text-slate-300 mb-5 leading-relaxed bg-slate-900/50 p-3 rounded-xl">• ${o.items.join('<br>• ')}</div>
+                    <div class="bg-slate-900 p-5 rounded-3xl space-y-3 border border-slate-800 shadow-inner">
+                        <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">입금 안내</p>
+                        <p class="text-base font-black text-white tracking-tight">${state.accountInfo.bank} ${state.accountInfo.num}</p>
+                        <p class="text-[10px] text-slate-400 font-bold">예금주: ${state.accountInfo.holder}</p>
+                    </div>
+                </div>`).join('');
         }
 
         function closeOrderModal() { document.getElementById('order-modal').classList.add('hidden'); }
 
-        function init() {
+        window.onload = () => {
             loadLocalData();
             startTimerLoop();
             if (state.currentMarketId !== 'main-base') syncData();
             render();
             lucide.createIcons();
-        }
-
-        window.onload = init;
+        };
     </script>
 </body>
 </html>
