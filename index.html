@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>고고진 마켓 (GOGOJIN MARKET)</title>
+    <title>고고진 라이브 마켓 (GOGOJIN MARKET)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -11,36 +11,44 @@
         body { font-family: 'Pretendard', sans-serif; background-color: #0f172a; color: #f1f5f9; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
         
         .gogojin-card { background: #1e293b; border: 1px solid #334155; border-radius: 28px; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .btn-primary { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; font-weight: 900; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; font-weight: 900; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3); }
         .tab-active { border-bottom: 4px solid #ef4444; color: #ef4444; font-weight: 900; }
-        .input-glow:focus { box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); border-color: #ef4444 !important; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .timer-glow { text-shadow: 0 0 15px rgba(239, 68, 68, 0.6); }
-        .admin-modal { background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(20px); }
         
-        .stock-tag { background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: 900; }
-        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+        .qty-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: #334155; font-weight: 900; }
+        .qty-btn:active { transform: scale(0.9); background: #ef4444; }
+        
+        .image-overlay { background: linear-gradient(to top, rgba(15, 23, 42, 0.9) 0%, transparent 60%); }
+        .bank-box { background: #2563eb; border-radius: 24px; padding: 20px; text-align: center; }
+
+        /* 김경주님 요청: 입력창 강조 (검은 글씨) */
+        .input-highlight { background-color: #ffffff !important; color: #000000 !important; font-weight: 800 !important; }
+        .input-highlight::placeholder { color: #94a3b8 !important; }
+
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="pb-20">
+<body class="pb-32">
+
     <div id="app" class="max-w-md mx-auto min-h-screen relative">
         <header class="sticky top-0 z-50 bg-[#0f172a]/95 backdrop-blur-xl px-6 py-6 border-b border-slate-800 text-center">
             <div class="flex justify-between items-center mb-1">
-                <span id="live-indicator" class="text-[10px] bg-slate-600 text-white px-2 py-0.5 rounded-full font-black tracking-tighter uppercase">대기중</span>
+                <span id="live-indicator" class="text-[10px] bg-slate-600 text-white px-2 py-0.5 rounded-full font-black tracking-tighter uppercase">대기 중</span>
                 <button onclick="showAdminLogin()" class="text-slate-600 hover:text-red-500 transition-colors p-2">
                     <i data-lucide="shield-check" class="w-6 h-6"></i>
                 </button>
             </div>
             <h1 class="text-4xl font-black tracking-tighter italic text-red-500">고고진 마켓</h1>
-            <p id="current-warehouse-display" class="text-[10px] text-slate-500 font-bold tracking-[0.2em] uppercase mt-1">데이터 동기화 중...</p>
+            <p id="current-warehouse-display" class="text-[10px] text-slate-500 font-bold tracking-[0.2em] uppercase mt-1 italic">지점을 선택해주세요</p>
             
+            <!-- 방송 타이머 -->
             <div id="timer-box" class="mt-5 p-4 rounded-3xl bg-slate-900/50 border border-slate-800 flex items-center justify-between shadow-inner">
                 <div class="flex items-center gap-2">
                     <i data-lucide="timer" class="w-4 h-4 text-red-500"></i>
-                    <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider">남은 방송 시간</span>
+                    <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider">방송 타이머</span>
                 </div>
-                <span id="timer-display" class="text-2xl font-black font-mono text-slate-600 tracking-tighter">00:00:00</span>
+                <span id="timer-display" class="text-2xl font-black font-mono text-slate-500 tracking-tighter">00:00:00</span>
             </div>
         </header>
 
@@ -49,17 +57,26 @@
             <button onclick="switchTab('lookup')" id="tab-lookup" class="flex-1 py-4 text-xs font-bold uppercase tracking-widest text-slate-500">내 주문 확인</button>
         </nav>
 
-        <main id="content-area" class="px-4 py-6 space-y-6">
-            <div class="py-20 text-center text-slate-500 font-bold">김경주님의 보급고 연결 중...</div>
-        </main>
+        <!-- 메인 콘텐츠 영역 -->
+        <main id="content-area" class="px-4 py-6"></main>
 
-        <div id="admin-login-modal" class="fixed inset-0 z-[100] admin-modal flex items-center justify-center hidden p-6">
-            <div class="w-full max-w-xs space-y-6 text-center">
-                <div class="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                    <i data-lucide="lock" class="w-10 h-10"></i>
+        <!-- 최종 주문서 모달 -->
+        <div id="order-modal" class="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-end justify-center hidden p-0">
+            <div class="w-full bg-slate-900 rounded-t-[40px] p-8 space-y-6 shadow-2xl border-t border-slate-800 animate-fade-in max-h-[95vh] overflow-y-auto no-scrollbar">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-black text-white italic">최종 주문서 작성</h2>
+                    <button onclick="closeOrderModal()" class="text-slate-500"><i data-lucide="x" class="w-8 h-8"></i></button>
                 </div>
-                <h2 class="text-2xl font-black italic text-white uppercase tracking-tight">김경주님 인증</h2>
-                <input type="password" id="admin-pw-input" placeholder="비밀번호" class="w-full text-center text-2xl font-black p-4 rounded-2xl border-none outline-none input-glow bg-slate-900 text-white" />
+                <div id="order-modal-content" class="space-y-6"></div>
+            </div>
+        </div>
+
+        <!-- 관리자 로그인 모달 -->
+        <div id="admin-login-modal" class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center hidden p-6">
+            <div class="w-full max-w-xs space-y-6 text-center">
+                <div class="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto"><i data-lucide="lock" class="w-10 h-10"></i></div>
+                <h2 class="text-2xl font-black italic text-white uppercase tracking-tighter">김경주님 인증</h2>
+                <input type="password" id="admin-pw-input" placeholder="비밀번호" class="w-full text-center text-2xl font-black p-4 rounded-2xl border-none outline-none border border-slate-800 focus:border-red-500 bg-slate-900 text-white" />
                 <div class="flex gap-2">
                     <button onclick="hideAdminLogin()" class="flex-1 py-4 bg-slate-800 text-slate-400 rounded-2xl font-black">취소</button>
                     <button onclick="verifyAdmin()" class="flex-1 py-4 btn-primary rounded-2xl font-black">인증</button>
@@ -67,7 +84,19 @@
             </div>
         </div>
 
-        <div id="notification" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[150] hidden">
+        <!-- 하단 장바구니 바 -->
+        <div id="cart-bar" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] hidden w-auto min-w-[200px]">
+            <button onclick="openOrderModal()" class="w-full py-3.5 btn-primary rounded-full flex items-center justify-center gap-4 px-10 shadow-2xl shadow-red-900/40 border border-red-400/30">
+                <div class="flex items-center gap-2">
+                    <span id="cart-count" class="bg-white text-red-600 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black">0</span>
+                    <span class="text-base font-black tracking-tighter">주문하기</span>
+                </div>
+                <span id="cart-total" class="text-lg font-black tracking-tighter">0원</span>
+            </button>
+        </div>
+
+        <!-- 글로벌 알림 -->
+        <div id="notification" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[300] hidden">
             <div class="bg-red-600 text-white px-8 py-4 rounded-full font-black shadow-2xl flex items-center gap-3 border-2 border-red-400">
                 <i data-lucide="bell" class="w-4 h-4"></i>
                 <span id="notif-msg" class="text-sm">알림</span>
@@ -76,76 +105,32 @@
     </div>
 
     <script>
-        const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzIxfrKTMPPpT1TNzjuR4rEOnbK_o9lrb5ZN2rvVBz5goOohPJmjLaSzMA5cnTi1UPy/exec";
-
         let state = {
             view: 'customer',
             tab: 'shop',
             currentMarketId: 'main-base',
-            warehouses: [
-                { id: 'main-base', name: '메인 베이스', sheetUrl: DEFAULT_GAS_URL }
-            ], 
+            warehouses: [{ id: 'main-base', name: '메인 베이스 (설정 필요)', sheetUrl: '' }], 
             products: [],
             orders: [],
+            cart: [],
             adminKey: '1234',
             liveSessions: {}, 
-            accountInfo: { bank: '카카오뱅크', num: '연동 대기', holder: '김경주' }
+            accountInfo: { bank: '카카오뱅크', num: '', holder: '김경주' },
+            searchTerm: ''
         };
 
-        function init() {
-            loadLocalData();
-            startTimerLoop();
-            syncData();
-            render();
-            lucide.createIcons();
+        // 핵심 유틸리티 함수
+        function saveLocalData() {
+            localStorage.setItem('gogojin_final_stable', JSON.stringify(state));
         }
 
         function loadLocalData() {
-            const saved = localStorage.getItem('gogojin_final_data');
+            const saved = localStorage.getItem('gogojin_final_stable');
             if (saved) {
                 const parsed = JSON.parse(saved);
                 state = { ...state, ...parsed };
             }
-            state.adminKey = '1234'; // 비밀번호 강제 유지
-        }
-
-        function saveLocalData() {
-            localStorage.setItem('gogojin_final_data', JSON.stringify(state));
-        }
-
-        async function syncData() {
-            const currentW = state.warehouses.find(w => w.id === state.currentMarketId);
-            if (!currentW || !currentW.sheetUrl) return;
-
-            try {
-                const response = await fetch(currentW.sheetUrl);
-                const data = await response.json();
-                
-                // 데이터 구조: { products: [...], account: {bank, num, holder} }
-                if (data.products) state.products = data.products;
-                if (data.account) state.accountInfo = data.account;
-                
-                render();
-            } catch (err) {
-                console.error("동기화 실패:", err);
-            }
-        }
-
-        function startTimerLoop() {
-            setInterval(() => {
-                if (!state.currentMarketId) return;
-                const session = state.liveSessions[state.currentMarketId];
-                if (session && session.isLive && session.startTime) {
-                    const elapsed = Date.now() - session.startTime;
-                    const remaining = Math.max(0, session.duration - elapsed);
-                    document.getElementById('timer-display').innerText = formatTime(remaining);
-                    if (remaining === 0) {
-                        session.isLive = false;
-                        saveLocalData();
-                        render();
-                    }
-                }
-            }, 1000);
+            state.adminKey = '1234'; // 비밀번호 강제 초기화
         }
 
         function formatTime(ms) {
@@ -155,11 +140,187 @@
             return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
         }
 
+        function showNotif(msg) {
+            const n = document.getElementById('notification');
+            document.getElementById('notif-msg').innerText = msg;
+            n.classList.remove('hidden');
+            setTimeout(() => n.classList.add('hidden'), 3000);
+        }
+
+        async function syncData() {
+            if (state.currentMarketId === 'main-base') { state.products = []; render(); return; }
+            const currentW = state.warehouses.find(w => w.id === state.currentMarketId);
+            if (!currentW || !currentW.sheetUrl) return;
+            try {
+                const response = await fetch(currentW.sheetUrl);
+                const data = await response.json();
+                
+                if (data.products) state.products = data.products;
+                else if (Array.isArray(data)) state.products = data;
+                
+                if (data.account && !state.accountInfo.num) {
+                    state.accountInfo = data.account;
+                }
+                render();
+            } catch (err) { console.error("동기화 실패", err); }
+        }
+
+        function startTimerLoop() {
+            setInterval(() => {
+                if (!state.currentMarketId) return;
+                const session = state.liveSessions[state.currentMarketId];
+                const timerDisp = document.getElementById('timer-display');
+                
+                if (session && session.isLive && session.startTime) {
+                    const remaining = Math.max(0, session.duration - (Date.now() - session.startTime));
+                    if(timerDisp) timerDisp.innerText = formatTime(remaining);
+                    if (remaining === 0) {
+                        session.isLive = false;
+                        render();
+                    }
+                } else {
+                    if(timerDisp) timerDisp.innerText = "00:00:00";
+                }
+            }, 1000);
+        }
+
+        function switchTab(tab) {
+            state.tab = tab;
+            const shopBtn = document.getElementById('tab-shop');
+            const lookupBtn = document.getElementById('tab-lookup');
+            if (tab === 'shop') {
+                shopBtn.className = "flex-1 py-4 text-xs font-bold uppercase tracking-widest tab-active";
+                lookupBtn.className = "flex-1 py-4 text-xs font-bold uppercase tracking-widest text-slate-500";
+            } else {
+                shopBtn.className = "flex-1 py-4 text-xs font-bold uppercase tracking-widest text-slate-500";
+                lookupBtn.className = "flex-1 py-4 text-xs font-bold uppercase tracking-widest tab-active";
+            }
+            render();
+        }
+
+        function showAdminLogin() { document.getElementById('admin-login-modal').classList.remove('hidden'); document.getElementById('admin-pw-input').focus(); }
+        function hideAdminLogin() { document.getElementById('admin-login-modal').classList.add('hidden'); document.getElementById('admin-pw-input').value = ''; }
+        
+        function verifyAdmin() {
+            const inputVal = document.getElementById('admin-pw-input').value.trim();
+            if (inputVal === state.adminKey) {
+                state.view = 'admin';
+                hideAdminLogin();
+                window.scrollTo(0,0);
+                render();
+            } else {
+                showNotif("비밀번호 인증 실패");
+            }
+        }
+
+        function updateTempQty(name, delta, max) {
+            const el = document.getElementById(`temp-qty-${name}`);
+            let val = parseInt(el.innerText) + delta;
+            if (val < 1) val = 1; if (max && val > max) val = max;
+            el.innerText = val;
+        }
+
+        function addToCart(name, price, stock) {
+            const session = state.liveSessions[state.currentMarketId];
+            if (!session || !session.isLive) return showNotif("방송 중일 때만 장바구니 이용이 가능합니다.");
+            const qty = parseInt(document.getElementById(`temp-qty-${name}`).innerText);
+            
+            const existingItem = state.cart.find(item => item.name === name);
+            if (existingItem) { existingItem.qty += qty; } 
+            else { state.cart.push({ name, price, qty }); }
+            
+            showNotif(`${name} ${qty}개 추가완료!`);
+            render();
+        }
+
+        async function handleFinalOrder() {
+            const tid = document.getElementById('order-tiktok').value.trim();
+            const name = document.getElementById('order-name').value.trim();
+            if (!tid || !name) return showNotif("틱톡 ID와 입금자 성함을 반드시 입력해주세요!");
+
+            const currentW = state.warehouses.find(w => w.id === state.currentMarketId);
+            const total = state.cart.reduce((s,i)=>s+(i.price*i.qty),0);
+            
+            const order = { 
+                type: 'NEW_ORDER', name, tiktokId: tid, 
+                items: state.cart.map(i=>`${i.name}(${i.qty})`), 
+                totalAmount: total, warehouse: currentW.name, timestamp: new Date().toLocaleString(),
+                deductions: state.cart.map(i => ({ name: i.name, qty: i.qty }))
+            };
+
+            // 로컬 재고 차감 반영
+            state.cart.forEach(cartItem => {
+                const product = state.products.find(p => (p.상품명 || p.name) === cartItem.name);
+                if (product) {
+                    const currentStock = parseInt(product.재고 || product.stock || 0);
+                    product.재고 = Math.max(0, currentStock - cartItem.qty);
+                }
+            });
+
+            state.orders.unshift(order); saveLocalData();
+            
+            try { 
+                await fetch(currentW.sheetUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify(order) }); 
+                renderPaymentInstruction(order); 
+            } catch (e) { renderPaymentInstruction(order); }
+        }
+
+        function saveBankSettings() {
+            state.accountInfo.bank = document.getElementById('bank-input').value.trim();
+            state.accountInfo.num = document.getElementById('account-num-input').value.trim();
+            state.accountInfo.holder = document.getElementById('holder-input').value.trim();
+            saveLocalData(); showNotif("계좌 정보가 저장되었습니다."); render();
+        }
+
+        function switchWarehouse(id) { 
+            state.currentMarketId = id; 
+            saveLocalData(); 
+            if(id!=='main-base') syncData(); 
+            else state.products=[]; 
+            render(); 
+            showNotif("지점 전환 완료"); 
+        }
+        
+        function addNewWarehouse() {
+            const n = document.getElementById('new-w-name').value.trim();
+            const u = document.getElementById('new-w-url').value.trim();
+            if(!n || !u) return showNotif("지점 이름과 시트 URL을 입력해주세요.");
+            const id = 'w-' + Date.now();
+            state.warehouses.push({id, name: n, sheetUrl: u});
+            state.currentMarketId = id;
+            saveLocalData(); syncData(); render();
+            showNotif(`'${n}' 지점 등록 성공!`);
+        }
+
+        function deleteWarehouse(id) {
+            if (id === 'main-base') return;
+            if (!confirm("해당 지점 정보를 삭제하시겠습니까?")) return;
+            state.warehouses = state.warehouses.filter(w => w.id !== id);
+            if (state.currentMarketId === id) state.currentMarketId = 'main-base';
+            saveLocalData(); render(); showNotif("지점이 삭제되었습니다.");
+        }
+
+        function toggleLive() {
+            if(!state.liveSessions[state.currentMarketId]) state.liveSessions[state.currentMarketId] = { isLive: false, startTime: null, duration: 4 * 3600000 };
+            const s = state.liveSessions[state.currentMarketId];
+            s.isLive = !s.isLive;
+            if(s.isLive) { 
+                s.startTime = Date.now(); 
+                s.duration = (document.getElementById('live-hours').value || 4) * 3600000; 
+                showNotif("라이브 방송 시작!");
+            } else {
+                s.startTime = null;
+                showNotif("방송 종료.");
+            }
+            saveLocalData(); render();
+        }
+
         function render() {
             const area = document.getElementById('content-area');
-            const nav = document.getElementById('customer-nav');
             const warehouseDisp = document.getElementById('current-warehouse-display');
             const liveIndicator = document.getElementById('live-indicator');
+            const timerDisp = document.getElementById('timer-display');
+            const cartBar = document.getElementById('cart-bar');
 
             const currentW = state.warehouses.find(w => w.id === state.currentMarketId);
             warehouseDisp.innerText = currentW ? currentW.name : "지점을 선택하세요";
@@ -167,232 +328,220 @@
             const session = state.currentMarketId ? state.liveSessions[state.currentMarketId] : null;
             if (session && session.isLive) {
                 liveIndicator.innerText = "방송 중";
-                liveIndicator.className = "text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full font-black tracking-tighter uppercase shadow-lg shadow-red-900/50";
+                liveIndicator.className = "text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full font-black tracking-tighter uppercase shadow-lg shadow-red-900/20";
+                timerDisp.classList.add('text-red-500');
             } else {
                 liveIndicator.innerText = "대기 중";
                 liveIndicator.className = "text-[10px] bg-slate-600 text-white px-2 py-0.5 rounded-full font-black tracking-tighter uppercase";
+                timerDisp.classList.remove('text-red-500');
             }
 
             if (state.view === 'customer') {
-                nav.classList.remove('hidden');
                 area.innerHTML = state.tab === 'shop' ? renderShop() : renderLookup();
-            } else {
-                nav.classList.add('hidden');
-                area.innerHTML = renderAdmin();
-            }
+                if (state.cart.length > 0 && state.tab === 'shop') {
+                    cartBar.classList.remove('hidden');
+                    document.getElementById('cart-count').innerText = state.cart.reduce((s, i) => s + i.qty, 0);
+                    document.getElementById('cart-total').innerText = state.cart.reduce((s, i) => s + (i.price * i.qty), 0).toLocaleString() + "원";
+                } else { cartBar.classList.add('hidden'); }
+            } else { cartBar.classList.add('hidden'); area.innerHTML = renderAdmin(); }
             lucide.createIcons();
         }
 
         function renderShop() {
-            if (state.products.length === 0) return `<div class="py-20 text-center text-slate-600 font-bold uppercase animate-fade-in">상품 정보를 불러오는 중입니다...</div>`;
-            return state.products.map(p => {
-                const name = p.제품명 || p.name;
-                const price = p.가격 || p.price;
-                const stock = p.재고 || p.stock || 0;
-                const imgUrl = `https://gogojin-kkj.github.io/-/images/${name}.jpg`;
-                
-                return `
-                <div class="gogojin-card animate-fade-in">
-                    <div class="relative overflow-hidden aspect-[4/5] bg-slate-800">
-                        <img src="${imgUrl}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/600x800/1e293b/444?text=${name}';">
-                        <div class="absolute inset-0 bg-gradient-to-t from-[#0f172a] to-transparent flex flex-col justify-end p-6">
-                             <div class="flex justify-between items-center mb-2">
-                                <span class="text-[10px] text-red-400 font-black uppercase tracking-tighter">${p.카테고리 || '의류'}</span>
-                                <span class="stock-tag">재고: ${stock}개</span>
-                             </div>
-                            <h3 class="text-2xl font-black text-white leading-none">${name}</h3>
-                        </div>
-                    </div>
-                    <div class="p-6 space-y-4">
-                        <div class="flex justify-between items-end">
-                            <div>
-                                <p class="text-3xl font-black text-red-500 tracking-tighter">${Number(price).toLocaleString()}원</p>
-                                <p class="text-[10px] text-slate-400 font-bold mt-1">색상: ${p.색상 || '단일'} | 가단: ${p.가단 || '--'}cm</p>
-                            </div>
-                            <div class="text-right">
-                                <span class="block text-[10px] text-slate-500 font-bold">총장: ${p.총장 || '--'}cm</span>
-                                <span class="block text-[10px] text-slate-500 font-bold">사이즈: ${p.사이즈 || 'FREE'}</span>
+            if (state.currentMarketId === 'main-base') return `<div class="py-24 text-center text-slate-600 font-bold uppercase animate-fade-in"><i data-lucide="info" class="w-12 h-12 mx-auto mb-4 opacity-20"></i>등록된 지점이 없습니다.</div>`;
+            const filtered = state.products.filter(p => {
+                const term = state.searchTerm.toLowerCase();
+                return (p.상품명 || p.name || "").toLowerCase().includes(term) || (p.카테고리 || p.category || "").toLowerCase().includes(term);
+            });
+            
+            return `
+                <div class="mb-6"><div class="flex items-center bg-slate-900 rounded-2xl px-4 py-3.5 border border-slate-800 focus-within:border-red-500 shadow-inner">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-500 mr-3"></i>
+                    <input oninput="state.searchTerm = this.value; render();" placeholder="제품명 또는 카테고리 검색" class="bg-transparent border-none outline-none w-full text-sm font-bold text-white placeholder-slate-600" />
+                </div></div>
+                <div class="space-y-6">${filtered.map(p => {
+                    const name = p.상품명 || p.name || "-";
+                    const price = p.가격 || p.price || 0;
+                    const stock = parseInt(p.재고 || p.stock || 0);
+                    return `
+                    <div class="gogojin-card animate-fade-in">
+                        <div class="relative overflow-hidden aspect-[4/5] bg-slate-800">
+                            <img src="https://gogojin-kkj.github.io/-/images/${name}.jpg" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/600x800/1e293b/ef4444?text=${encodeURIComponent(name)}';">
+                            <div class="absolute inset-0 image-overlay flex flex-col justify-end p-6">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-[9px] text-red-400 font-black uppercase tracking-widest">${p.카테고리 || '의류'}</span>
+                                    <span class="bg-slate-900/80 px-2 py-0.5 rounded text-[9px] font-black">${stock > 0 ? `재고: ${stock}개` : '품절'}</span>
+                                </div>
+                                <h3 class="text-2xl font-black text-white">${name}</h3>
                             </div>
                         </div>
-                        <button onclick="orderProduct('${name}', ${price})" ${stock <= 0 ? 'disabled' : ''} class="w-full py-5 btn-primary rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl ${stock <= 0 ? 'opacity-50 grayscale' : ''}">
-                            ${stock <= 0 ? '품절되었습니다' : '방송 주문 신청'}
-                        </button>
-                    </div>
-                </div>
-                `;
-            }).join('');
+                        <div class="p-6 space-y-4">
+                            <div class="flex justify-between items-center">
+                                <p class="text-2xl font-black text-red-500 tracking-tighter">${Number(price).toLocaleString()}원</p>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="updateTempQty('${name}', -1)" class="qty-btn">-</button>
+                                    <span id="temp-qty-${name}" class="text-base font-black w-4 text-center">1</span>
+                                    <button onclick="updateTempQty('${name}', 1, ${stock})" class="qty-btn">+</button>
+                                </div>
+                            </div>
+                            <div class="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800 text-[11px] font-bold text-slate-400 leading-relaxed">
+                                상세: ${p.색상 || '-'} / ${p.사이즈 || 'FREE'} / 총장:${p.총장 || '-'} / 가단:${p.가단 || '-'}
+                            </div>
+                            <button onclick="addToCart('${name}', ${price}, ${stock})" ${stock <= 0 ? 'disabled' : ''} class="w-full py-4 btn-primary rounded-2xl text-xs font-black uppercase tracking-widest ${stock <= 0 ? 'opacity-30 grayscale' : ''}">${stock > 0 ? '담기' : 'SOLDOUT'}</button>
+                        </div>
+                    </div>`; }).join('')}</div>`;
         }
 
         function renderLookup() {
             return `
-            <div class="bg-slate-900 p-8 rounded-[40px] border border-slate-800 space-y-5 text-center shadow-2xl animate-fade-in">
-                <h3 class="text-xl font-black text-white italic uppercase">주문 현황 조회</h3>
-                <input id="lookup-name" placeholder="입금자 성함" class="w-full p-5 rounded-2xl text-center font-black text-lg bg-slate-800 text-white outline-none border-none shadow-inner" />
-                <button onclick="performLookup()" class="w-full p-5 btn-primary rounded-2xl font-black uppercase tracking-widest">내역 확인</button>
+            <div class="bg-slate-900 p-8 rounded-[40px] border border-slate-800 space-y-5 text-center shadow-2xl animate-fade-in shadow-black/40">
+                <h3 class="text-xl font-black text-white italic uppercase tracking-tighter">주문 내역 조회</h3>
+                <input id="lookup-name" placeholder="입금자 성함 입력" class="w-full p-5 rounded-2xl text-center font-black text-lg bg-slate-800 text-white outline-none border border-slate-700 shadow-inner" />
+                <button onclick="performLookup()" class="w-full p-5 btn-primary rounded-2xl font-black uppercase tracking-widest shadow-xl">내역 확인하기</button>
             </div>
-            <div id="lookup-results" class="space-y-4 mt-6"></div>
-            `;
-        }
-
-        function renderAdmin() {
-            const currentW = state.warehouses.find(w => w.id === state.currentMarketId);
-            const session = state.currentMarketId ? (state.liveSessions[state.currentMarketId] || { isLive: false }) : { isLive: false };
-            
-            return `
-            <div class="space-y-8 animate-fade-in pb-20">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
-                    <h2 class="text-2xl font-black text-red-500 italic uppercase tracking-tighter">통합 관제 센터</h2>
-                    <button onclick="state.view='customer'; render();" class="text-xs font-bold text-slate-500 border border-slate-700 px-4 py-2 rounded-xl">활동 화면</button>
-                </div>
-
-                <div class="bg-slate-900 p-6 rounded-[32px] border border-blue-500/30 space-y-4 shadow-xl">
-                    <h3 class="text-sm font-black uppercase text-blue-400 flex items-center gap-2"><i data-lucide="credit-card"></i> 현재 지점 계좌 정보</h3>
-                    <div class="grid grid-cols-2 gap-4 text-left">
-                        <div class="bg-slate-800 p-4 rounded-2xl">
-                            <p class="text-[9px] text-slate-500 font-bold uppercase mb-1">은행 (예금주)</p>
-                            <p class="text-sm font-black text-white">${state.accountInfo.bank} (${state.accountInfo.holder})</p>
-                        </div>
-                        <div class="bg-slate-800 p-4 rounded-2xl">
-                            <p class="text-[9px] text-slate-500 font-bold uppercase mb-1">계좌번호</p>
-                            <p class="text-sm font-black text-white">${state.accountInfo.num}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-slate-900 p-6 rounded-[32px] border border-slate-800 space-y-4">
-                    <h3 class="text-sm font-black uppercase text-slate-400 flex items-center gap-2"><i data-lucide="database"></i> 지점 및 시트 연동</h3>
-                    <select id="warehouse-selector" onchange="switchWarehouse(this.value)" class="w-full p-4 rounded-2xl bg-slate-800 font-bold text-white border-none outline-none">
-                        ${state.warehouses.map(w => `<option value="${w.id}" ${w.id === state.currentMarketId ? 'selected' : ''}>${w.name}</option>`).join('')}
-                    </select>
-                    <div class="pt-2 border-t border-slate-800 space-y-2">
-                        <input id="new-w-name" placeholder="새 지점 이름" class="w-full text-xs p-4 rounded-xl bg-slate-800 text-white outline-none" />
-                        <input id="new-w-url" placeholder="GAS 웹앱 URL" class="w-full text-[9px] p-4 rounded-xl bg-slate-800 text-white outline-none" />
-                        <button onclick="addNewWarehouse()" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black text-xs">지점 신규 등록</button>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-slate-900 p-6 rounded-[32px] border border-slate-800 text-center">
-                        <p class="text-[10px] text-slate-500 font-bold mb-3 uppercase tracking-widest">방송 제어</p>
-                        <input type="number" id="live-hours" min="1" max="10" value="4" class="w-full p-2 mb-3 rounded-lg bg-slate-800 text-center font-bold text-white border-none" />
-                        <button onclick="toggleLive()" class="w-full py-4 rounded-2xl font-black ${session.isLive ? 'bg-red-600' : 'bg-green-600'} text-white shadow-lg">
-                            ${session.isLive ? '방송 종료' : '방송 시작'}
-                        </button>
-                    </div>
-                    <div class="bg-slate-900 p-6 rounded-[32px] border border-slate-800 text-center flex flex-col justify-center">
-                        <p class="text-[10px] text-slate-500 font-bold mb-2 uppercase tracking-widest">누적 주문</p>
-                        <span class="text-4xl font-black italic text-red-500">${state.orders.filter(o => o.marketId === state.currentMarketId).length}건</span>
-                    </div>
-                </div>
-            </div>
-            `;
-        }
-
-        function showAdminLogin() { document.getElementById('admin-login-modal').classList.remove('hidden'); document.getElementById('admin-pw-input').focus(); }
-        function hideAdminLogin() { document.getElementById('admin-login-modal').classList.add('hidden'); document.getElementById('admin-pw-input').value = ''; }
-        function verifyAdmin() {
-            if (document.getElementById('admin-pw-input').value.trim() === state.adminKey) {
-                state.view = 'admin'; hideAdminLogin(); window.scrollTo(0, 0); render();
-            } else showNotif("비밀번호 오류");
-        }
-
-        function switchWarehouse(id) {
-            if (!id) return;
-            state.currentMarketId = id;
-            saveLocalData(); syncData(); render();
-            showNotif("지점 전환 및 데이터 로드 완료");
-        }
-
-        function addNewWarehouse() {
-            const name = document.getElementById('new-w-name').value.trim();
-            const url = document.getElementById('new-w-url').value.trim();
-            if (!name || !url) return showNotif("이름과 URL을 모두 입력하세요.");
-            const id = 'w-' + Date.now();
-            state.warehouses.push({ id, name, sheetUrl: url });
-            state.currentMarketId = id;
-            saveLocalData(); syncData(); render();
-            showNotif(`지점 '${name}' 등록 완료`);
-        }
-
-        async function orderProduct(name, price) {
-            const session = state.liveSessions[state.currentMarketId];
-            if (!session || !session.isLive) return showNotif("현재는 방송 시간이 아닙니다.");
-
-            const tiktokId = prompt("틱톡 아이디를 입력하십시오.");
-            const customerName = prompt("입금하실 성함(실명)을 입력하십시오.");
-
-            if (!tiktokId || !customerName) return showNotif("정보 부족으로 취소");
-
-            const currentW = state.warehouses.find(w => w.id === state.currentMarketId);
-            const order = {
-                type: 'NEW_ORDER',
-                name: customerName, tiktokId: tiktokId, items: [name], totalAmount: price,
-                marketId: state.currentMarketId, warehouseName: currentW.name,
-                timestamp: new Date().toLocaleString()
-            };
-
-            state.orders.unshift(order);
-            saveLocalData();
-            
-            try {
-                await fetch(currentW.sheetUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify(order) });
-                showNotif("주문이 접수되었습니다.");
-            } catch (e) { showNotif("시트 전송 실패"); }
-
-            state.tab = 'lookup'; render();
-            setTimeout(() => { document.getElementById('lookup-name').value = customerName; performLookup(); }, 100);
+            <div id="lookup-results" class="space-y-4 mt-6"></div>`;
         }
 
         function performLookup() {
             const name = document.getElementById('lookup-name').value.trim();
             const results = state.orders.filter(o => o.name === name);
             const container = document.getElementById('lookup-results');
-            if (results.length === 0) {
-                container.innerHTML = `<div class="py-10 text-center text-slate-600 font-bold">내역이 없습니다.</div>`;
-                return;
-            }
+            if (results.length === 0) { container.innerHTML = `<div class="py-16 text-center text-slate-700 font-bold uppercase animate-fade-in">조회된 내역이 없습니다.</div>`; return; }
             container.innerHTML = results.map(o => `
-                <div class="gogojin-card p-6 border-l-4 border-l-red-500 animate-fade-in">
-                    <div class="flex justify-between mb-4">
-                        <span class="text-xs font-black text-slate-500 uppercase">입금 확인 중</span>
-                        <span class="text-2xl font-black text-red-500">${Number(o.totalAmount).toLocaleString()}원</span>
+                <div class="gogojin-card p-6 border-l-8 border-l-red-500 animate-fade-in">
+                    <div class="flex justify-between items-start mb-4"><span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">입금 확인 중</span><span class="text-3xl font-black text-red-500 tracking-tighter">${Number(o.totalAmount).toLocaleString()}원</span></div>
+                    <div class="text-sm font-bold text-slate-300 mb-5 leading-relaxed bg-slate-900/50 p-3 rounded-xl">• ${o.items.join('<br>• ')}</div>
+                    <div class="bg-slate-900 p-5 rounded-3xl space-y-3 border border-slate-800 shadow-inner">
+                        <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">입금 안내 (재확인)</p>
+                        <p class="text-base font-black text-white tracking-tight">${state.accountInfo.bank} ${state.accountInfo.num}</p>
+                        <p class="text-[10px] text-slate-400 font-bold">예금주: ${state.accountInfo.holder}</p>
                     </div>
-                    <div class="text-[10px] text-slate-400 mb-1 font-bold">${o.warehouseName}</div>
-                    <div class="text-sm font-bold text-slate-300 mb-4">• ${o.items.join(', ')}</div>
-                    <div class="bg-slate-900 p-4 rounded-xl space-y-2">
-                        <p class="text-sm font-black">${state.accountInfo.bank} ${state.accountInfo.num}</p>
-                        <p class="text-[10px] text-slate-400">예금주: ${state.accountInfo.holder}</p>
+                </div>`).join('');
+        }
+
+        function renderAdmin() {
+            const session = state.liveSessions[state.currentMarketId] || { isLive: false };
+            return `
+            <div class="space-y-8 animate-fade-in pb-24 text-white">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-5">
+                    <h2 class="text-2xl font-black text-red-500 italic uppercase tracking-tighter">김경주님 관리 센터</h2>
+                    <button onclick="state.view='customer'; render();" class="text-xs font-bold text-slate-400 border border-slate-800 px-5 py-2.5 rounded-2xl">방송 화면 가기</button>
+                </div>
+
+                <div class="bg-slate-900 p-7 rounded-[32px] border border-slate-800 space-y-4 shadow-2xl">
+                    <h3 class="text-sm font-black uppercase text-slate-400 flex items-center gap-2 tracking-widest"><i data-lucide="warehouse"></i> 지점 및 시트 연동 설정</h3>
+                    <div class="space-y-3">
+                        ${state.warehouses.map(w => `
+                            <div class="flex justify-between items-center bg-slate-800 p-4 rounded-2xl border border-slate-700">
+                                <div onclick="switchWarehouse('${w.id}')" class="flex-1 cursor-pointer">
+                                    <p class="font-black text-white ${w.id === state.currentMarketId ? 'text-red-500' : ''}">${w.name}</p>
+                                    <p class="text-[8px] text-slate-500 truncate max-w-[150px]">${w.sheetUrl || '연동 주소 없음'}</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    ${w.id !== 'main-base' ? `<button onclick="deleteWarehouse('${w.id}')" class="text-slate-500 hover:text-red-500 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+                                    <button onclick="switchWarehouse('${w.id}')" class="px-4 py-2 rounded-xl text-[10px] font-black ${w.id === state.currentMarketId ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-400'}">선택</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="pt-5 border-t border-slate-800 space-y-6">
+                        <input id="new-w-name" placeholder="지점 이름" class="w-full py-9 px-6 rounded-2xl bg-slate-800 outline-none text-lg font-bold border border-slate-700" />
+                        <input id="new-w-url" placeholder="GAS 웹앱 URL 주소" class="w-full py-9 px-6 rounded-2xl bg-slate-800 outline-none text-[10px] font-bold border border-slate-700" />
+                        <button onclick="addNewWarehouse()" class="w-full py-9 bg-blue-600 rounded-3xl font-black text-xl shadow-xl">신규 지점 등록 및 연동</button>
                     </div>
                 </div>
-            `).join('');
+
+                <div class="bg-slate-900 p-7 rounded-[32px] border border-slate-800 space-y-4 shadow-2xl">
+                    <h3 class="text-sm font-black uppercase text-slate-400 flex items-center gap-2 tracking-widest"><i data-lucide="credit-card"></i> 입금 계좌 수동 설정</h3>
+                    <div class="space-y-4">
+                        <input id="bank-input" value="${state.accountInfo.bank}" class="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold" placeholder="은행명" />
+                        <input id="account-num-input" value="${state.accountInfo.num}" class="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold" placeholder="계좌번호" />
+                        <input id="holder-input" value="${state.accountInfo.holder}" class="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold" placeholder="예금주" />
+                        <button onclick="saveBankSettings()" class="w-full py-4 bg-green-600 rounded-2xl font-black text-sm">계좌 정보 저장</button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 p-7 rounded-[32px] border border-slate-800 text-center shadow-xl space-y-6">
+                    <p class="text-[10px] text-slate-500 font-black uppercase tracking-widest">방송 타이머 설정</p>
+                    <div class="flex items-center gap-4 bg-slate-800 p-4 rounded-3xl">
+                        <span class="text-xs font-black text-slate-400 shrink-0">시간 설정</span>
+                        <input type="number" id="live-hours" min="1" max="10" value="4" class="flex-1 bg-transparent text-center font-black text-4xl text-white border-none outline-none" />
+                        <span class="text-lg font-bold text-slate-500">시간</span>
+                    </div>
+                    <button onclick="toggleLive()" ${state.currentMarketId==='main-base' ? 'disabled' : ''} class="w-full py-9 rounded-[2.5rem] font-black text-2xl ${session.isLive ? 'bg-red-600' : 'bg-green-600'} text-white uppercase shadow-2xl active:scale-95 transition-all">
+                        ${session.isLive ? '방송 종료' : '방송 시작'}
+                    </button>
+                </div>
+            </div>`;
         }
 
-        function toggleLive() {
-            if (!state.currentMarketId) return;
-            if (!state.liveSessions[state.currentMarketId]) state.liveSessions[state.currentMarketId] = { isLive: false, startTime: null, duration: 4 * 3600000 };
-            const session = state.liveSessions[state.currentMarketId];
-            session.isLive = !session.isLive;
-            if (session.isLive) {
-                session.startTime = Date.now();
-                session.duration = (document.getElementById('live-hours').value || 4) * 3600000;
-            } else session.startTime = null;
-            saveLocalData(); render();
+        function openOrderModal() { document.getElementById('order-modal').classList.remove('hidden'); openOrderModalContent(); }
+        function closeOrderModal() { document.getElementById('order-modal').classList.add('hidden'); }
+        
+        function openOrderModalContent() {
+            const content = document.getElementById('order-modal-content');
+            content.innerHTML = `
+                <div class="space-y-4 max-h-[40vh] overflow-y-auto no-scrollbar py-2">
+                    ${state.cart.map((item, idx) => `
+                        <div class="flex justify-between items-center bg-slate-800/50 p-5 rounded-3xl border border-slate-800 shadow-inner">
+                            <div><p class="font-black text-white text-lg tracking-tight">${item.name}</p><p class="text-[10px] text-slate-500 font-bold mt-1">단가: ${item.price.toLocaleString()}원</p></div>
+                            <div class="flex items-center gap-6">
+                                <div class="text-right"><p class="text-[10px] text-slate-500 font-bold">합계 수량</p><p class="text-3xl font-black text-white">x ${item.qty}</p></div>
+                                <div class="text-right"><p class="text-[10px] text-red-500 font-bold italic">소계</p><p class="text-3xl font-black text-red-500 tracking-tighter">${(item.price * item.qty).toLocaleString()}원</p></div>
+                                <button onclick="state.cart.splice(${idx},1); if(state.cart.length==0) { closeOrderModal(); render(); } else { openOrderModalContent(); render(); }" class="text-slate-600 hover:text-red-500 transition-colors ml-2"><i data-lucide="trash-2" class="w-6 h-6"></i></button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="flex justify-between items-end border-t border-slate-800 pt-6 pb-2 px-2"><span class="text-slate-400 font-black uppercase text-xs tracking-widest">최종 합계 금액</span><span class="text-5xl font-black text-red-500 tracking-tighter">${state.cart.reduce((s,i)=>s+(i.price*i.qty),0).toLocaleString()}원</span></div>
+                <div class="space-y-4 bg-slate-900 rounded-3xl"><div class="space-y-2"><p class="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">틱톡 정보 및 입금자 확인</p><input id="order-tiktok" placeholder="틱톡 아이디 입력 (필수)" class="w-full p-5 rounded-2xl outline-none input-highlight shadow-xl text-lg" /><input id="order-name" placeholder="입금자 성함 (실명 입력 필수)" class="w-full p-5 rounded-2xl outline-none input-highlight shadow-xl border-2 border-red-500/30 text-lg" /></div></div>
+                <button onclick="handleFinalOrder()" class="w-full py-5 btn-primary rounded-3xl text-sm font-black uppercase tracking-widest shadow-2xl">주문 완료 및 입금 안내 받기</button>
+            `;
+            lucide.createIcons();
         }
 
-        function switchTab(tab) {
-            state.tab = tab; render();
-            const tabs = ['shop', 'lookup'];
-            tabs.forEach(t => {
-                const btn = document.getElementById(`tab-${t}`);
-                btn.className = (t === tab) ? "flex-1 py-4 text-xs font-bold uppercase tracking-widest tab-active" : "flex-1 py-4 text-xs font-bold uppercase tracking-widest text-slate-500";
-            });
+        function renderPaymentInstruction(order) {
+            const modalArea = document.getElementById('order-modal-content');
+            modalArea.innerHTML = `
+                <div class="text-center space-y-8 animate-fade-in py-6">
+                    <div class="w-20 h-20 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-2 shadow-inner"><i data-lucide="check-circle" class="w-12 h-12"></i></div>
+                    <div><h2 class="text-3xl font-black text-white italic tracking-tighter">주문 신청 성공!</h2><p class="text-slate-500 text-sm mt-2 font-bold leading-relaxed">김경주님 마켓을 이용해주셔서 감사합니다.<br>아래 계좌로 입금해 주시면 확인 후 배송됩니다.</p></div>
+                    
+                    <div class="bank-box p-8 space-y-4 shadow-2xl border border-blue-400/30">
+                        <p class="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">입금 계좌 정보</p>
+                        <div class="space-y-1">
+                            <p class="text-2xl font-black text-white tracking-tight">${state.accountInfo.bank} ${state.accountInfo.num}</p>
+                            <p class="text-base font-bold text-white/80">예금주: ${state.accountInfo.holder}</p>
+                        </div>
+                        <button onclick="copyAccText('${state.accountInfo.num}')" class="w-full py-3.5 bg-white/20 hover:bg-white/30 rounded-2xl text-xs font-black text-white transition-all active:scale-95 flex items-center justify-center gap-2">
+                            <i data-lucide="copy" class="w-3 h-3"></i> 계좌번호 복사하기
+                        </button>
+                    </div>
+
+                    <div class="bg-red-500/10 border border-red-500/30 p-6 rounded-[2.5rem] text-left shadow-inner">
+                        <p class="text-red-500 font-black text-lg flex items-center gap-2 italic"><i data-lucide="alert-triangle" class="w-5 h-5"></i> 입금 미확인 시 배송 불가</p>
+                        <p class="text-slate-500 text-[11px] mt-2 font-bold leading-relaxed">방송 중 입금이 확인되지 않은 주문건은 자동으로 취소되며 배송이 진행되지 않습니다. 꼭 방송 종료 전까지 입금해주세요!</p>
+                    </div>
+
+                    <div class="flex flex-col gap-3">
+                        <button onclick="closeOrderModal(); switchTab('lookup');" class="w-full py-5 btn-primary rounded-3xl text-sm font-black uppercase tracking-widest shadow-lg">조회 화면에서 확인하기</button>
+                        <button onclick="closeOrderModal(); switchTab('shop');" class="w-full py-5 bg-slate-800 text-slate-400 rounded-3xl text-sm font-black uppercase tracking-widest">상품 목록으로 돌아가기</button>
+                    </div>
+                </div>
+            `;
+            state.cart = []; render(); lucide.createIcons();
         }
 
-        function showNotif(msg) {
-            const n = document.getElementById('notification');
-            document.getElementById('notif-msg').innerText = msg;
-            n.classList.remove('hidden');
-            setTimeout(() => n.classList.add('hidden'), 3000);
+        function copyAccText(text) {
+            const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); showNotif("계좌번호가 복사되었습니다!");
+        }
+
+        function init() {
+            loadLocalData();
+            startTimerLoop();
+            if (state.currentMarketId !== 'main-base') syncData();
+            render();
+            lucide.createIcons();
         }
 
         window.onload = init;
